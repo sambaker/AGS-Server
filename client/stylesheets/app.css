@@ -4,6 +4,29 @@
 	margin-bottom: 20px;
 }
 
-.headerbox {
-	background-color: rgb(200, 200, 200);
+.header {
+	height: 70px;
+}
+
+.connectivity {
+
+}
+
+.float-right {
+	float: right;
+}
+
+.connection.connected .connected,
+.connection.not-connected .not-connected {
+	display: block;
+}
+
+.connection.connected .inline.connected,
+.connection.not-connected .inline.not-connected {
+	display: inline;
+}
+
+.connection.connected .not-connected,
+.connection.not-connected .connected {
+	display: none;
 }

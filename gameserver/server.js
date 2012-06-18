@@ -9,6 +9,9 @@ var cradle = require('cradle');
 var cradleConnection = new(cradle.Connection)('https://sam-baker.cloudant.com', 443, {
     auth: { username: 'sam-baker', password: 'xxxxxx' }
 });
+var dbUser = cradleConnection.database('users');
+var dbGames = cradleConnection.database('games');
+
 cradleConnection.databases(function(error, db) {
     console.log(db);
 });
@@ -28,8 +31,43 @@ server.listen(8000);
 //     });
 // }
 
+function wssend(ws, o) {
+    ws.send(JSON.stringify(o));
+}
+
+var handlers = {
+    'authenticate' : function(ws, message) {
+        wssend(ws, {
+            type : "authenticated"
+        });
+    },
+    'signup' : function(ws, message) {
+        dbUser.post({
+            _id: message.name,
+            name: message.name,
+            password: message.password
+        }, function(err, res) {
+            if (err) {
+                wssend(ws, {
+                    type : "signup",
+                    success : false,
+                    error: {
+                        text: err.error + ": " + err.reason
+                    }
+                });
+            } else {
+                wssend(ws, {
+                    type : "signup",
+                    success : true
+                });
+            }
+        });
+    }
+}
+
 wss.on('connection', function(ws) {
     var Game = require('./checkers_game.js').Game;
+    console.log("Client connected, creating game");
     var game = new Game(Game.createGameState());
 
     var states = {
@@ -42,9 +80,22 @@ wss.on('connection', function(ws) {
     //console.log("Statemachine is ", sm);
 
     ws.on('message', function(message) {
-        console.log('received: %s', message);
-        ws.send('received ' + message);
+        var o = JSON.parse(message);
+        if (handlers.hasOwnProperty(o.type)) {
+            console.log("Handling message: ", o);
+            handlers[o.type](ws, o);
+        } else {
+            console.log("Unrecognized message type: ", o);
+            ws.send(JSON.stringify({
+                error: "Unrecognized message type " + o.type
+            }));
+        }
     });
-    ws.send('something');
+    ws.on('close', function() {
+        console.log('disconnected');
+    });
+    ws.on('error', function() {
+        console.log('error', arguments);
+    });
 });
 

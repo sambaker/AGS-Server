@@ -6,6 +6,7 @@
 	<link href="bootstrap/css/bootstrap.css" media="all" rel="stylesheet" type="text/css" />
 	<link href="stylesheets/app.css" media="all" rel="stylesheet" type="text/css" />
 	<script type="text/javascript" src="javascripts/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascripts/jquery.cookie.js"></script>
 	<script type="text/javascript" src="bootstrap/js/bootstrap.js"></script>
 	<script type="text/javascript" src="bootstrap/js/bootstrap-modal.js"></script>
 	<script src="awe-core/awe-core.js" type="text/javascript"></script>
@@ -26,27 +27,45 @@
 
 				<!-- Header -->
 				<div class="row">
-					<div class="well span4">
-						<h2>Artefact Checkers</h2>
-						This game is a test of the Artefact Game Server.
+					<div class="header span4">
+						<div class="header well">
+							<h2>Artefact Checkers</h2>
+							This game is a test of the Artefact Game Server.
+						</div>
 					</div>
-					<div class="well span4">
-						<h4>Connection status</h4>
-						<br />
-						Username is:
-						<span id="username-display">none</span>
-						<br />
-						<br />
-						<div style="float: right; clear:both;">
-							<button id="login-show" type="button" class="btn btn-info">Change</button>
+					<div class="span4">
+						<div class="header well">
+							<h4>User</h4>
+							<span id="auth-status"></span>
+							<br />
+							<span id="username-display">none</span>
+							<div style="float: right; clear:both;">
+								<button id="login-show" type="button" class="btn btn-warning">Change</button>
+							</div>
 						</div>
 					</div>
 				</div>
+
+				<!-- Connectivity -->
 				<div class="row">
+					<div class="connectivity span8">
+						<div id="connection" class="connection not-connected">
+							<div class="well">
+								<h4 class="inline not-connected">Not Connected</h4>
+								<h4 class="inline connected">Connected</h4>
+								<button id="disconnect" type="button" class="span2 btn btn-inverse float-right connected">Disconnect</button>
+								<button id="connect" type="button" class="span2 btn btn-success float-right not-connected">Connect</button>
+								<select id="connection-type" class="float-right">
+									<option>I'm ready to play for a while</option>
+									<option>I just want to take a turn</option>
+								</select>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				<!-- Login dialog -->
-				<div class="modal hide" id="myModal">
+				<div class="modal hide" id="login-dialog">
 					<div class="modal-header">
 						<button type="button" class="close" data-dismiss="modal">x</button>
 						<h3>Enter username and password</h3>
@@ -55,11 +74,12 @@
 						<input id="username-edit" type="text" class="span6" placeholder="Enter username">
 						<input id="password-edit" type="password" class="span6" placeholder="Enter password">
 						<label class="checkbox">
-								<input type="checkbox"> Remember me</input>
+								<input id="remember-me-check" type="checkbox"> Remember me</input>
 						</label>
 					</div>
 					<div class="modal-footer">
-						<button id="login-done" type="button" class="btn btn-primary" data-dismiss="modal">Done</button>
+						<button id="sign-up" type="button" class="btn">Create Account</button>
+						<button id="login-done" type="button" class="btn btn-primary" data-dismiss="modal">Sign In</button>
 					</div>
 				</div>
 		</div>
