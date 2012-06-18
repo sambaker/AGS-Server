@@ -36,12 +36,38 @@ function wssend(ws, o) {
 }
 
 var handlers = {
-    'authenticate' : function(ws, message) {
-        wssend(ws, {
-            type : "authenticated"
+    authenticate : function(ws, message, context) {
+        dbUser.get(message.name, function(err, doc) {
+            if (err) {
+                context.authenticated = false;
+                console.log("Failed auth", err);
+                wssend(ws, {
+                    type : "authenticate",
+                    error : {
+                        text : "Invalid username"
+                    }
+                });
+            } else {
+                if (doc.password == message.password) {
+                    context.authenticated = true;
+                    wssend(ws, {
+                        type : "authenticate",
+                        success : true
+                    });
+                } else {
+                    context.authenticated = false;
+                    console.log("Failed auth: Wrong password");
+                    wssend(ws, {
+                        type : "authenticate",
+                        error : {
+                            text : "Invalid password"
+                        }
+                    });
+                }
+            }
         });
     },
-    'signup' : function(ws, message) {
+    signup : function(ws, message) {
         dbUser.post({
             _id: message.name,
             name: message.name,
@@ -69,6 +95,7 @@ wss.on('connection', function(ws) {
     var Game = require('./checkers_game.js').Game;
     console.log("Client connected, creating game");
     var game = new Game(Game.createGameState());
+    var context = {};
 
     var states = {
         "CONNECTED" : {},
@@ -82,8 +109,17 @@ wss.on('connection', function(ws) {
     ws.on('message', function(message) {
         var o = JSON.parse(message);
         if (handlers.hasOwnProperty(o.type)) {
-            console.log("Handling message: ", o);
-            handlers[o.type](ws, o);
+            if (o.type == "authenticate" || o.type == "signup" || context.authenticated) {
+                console.log("Handling message: ", o);
+                handlers[o.type](ws, o, context);
+            } else {
+                wssend(ws, {
+                    type : "noauth",
+                    error : {
+                        text : "Received " + o.type + " message without authenticated session"
+                    }
+                });
+            }
         } else {
             console.log("Unrecognized message type: ", o);
             ws.send(JSON.stringify({

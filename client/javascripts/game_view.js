@@ -131,7 +131,7 @@ function GameView(server) {
 			start: function() {
 				_i.socket.send(JSON.stringify({
 					type: "authenticate",
-					user: username,
+					name: username,
 					password: password
 				}));
 			}
@@ -185,15 +185,20 @@ function GameView(server) {
 	}, "DISCONNECTED");
 
 	var handlers = {
-		authenticated : function(data) {
-			_i.smAuth.requestState("AUTHENTICATED");
+		authenticate : function(data) {
+			if (data.error) {
+				_i.smAuth.requestState("NONE");
+				alert("Authentication failed. Server says:\n\n" + data.error.text);
+			} else {
+				_i.smAuth.requestState("AUTHENTICATED");
+			}
 			showConnected();
 		},
 		signup : function(data) {
 			console.log("Sign up response", data);
 			if (data.error) {
-				alert("Your account couldn't be created. Server says:\n\n" + data.error.text);
 				_i.smAuth.requestState("NONE");
+				alert("Your account couldn't be created. Server says:\n\n" + data.error.text);
 			} else {
 				// Account created
 				saveCredentials();
