@@ -5,7 +5,11 @@
 }
 
 .header {
-	height: 70px;
+	height: 85px;
+}
+
+.header h2 {
+	margin-top: -6px;
 }
 
 .connectivity {
@@ -29,4 +33,19 @@
 .connection.connected .not-connected,
 .connection.not-connected .connected {
 	display: none;
+}
+
+.game-info {
+	color: #ffffff;
+}
+
+.game-info .control-label {
+	float: left;
+	padding-left: 10px;
+	padding-top: 22px;
+}
+
+.game-info .controls {
+	padding-left: 100px;
+	padding-top: 18px;
 }

@@ -1,13 +1,42 @@
-var gContext = {};
+var gParams = {
+	gameTypes : ["checkers","chess"]
+	//gameType : "checkers"
+}
+
+var gContext = {
+};
+
+function gameHasPlayers(game) {
+	return game.users.length > 1;
+}
+
+function headerDescriptionString() {
+	var s = "This page is a test of the Artefact Game Server. Here you can play ";
+	if (gParams.gameTypes) {
+		var count = gParams.gameTypes.length;
+		for (var i = 0; i < count; ++i) {
+			if (i == 0) {
+			} else if (i == count - 1) {
+				s += " and ";
+			} else {
+				s += ", ";
+			}
+			s += '<strong>' + gParams.gameTypes[i] + '</strong>';
+		}
+	} else {
+		gParams.gameType;
+	}
+	return s + " with your friends";
+}
 
 function gameParticipantString(game) {
 	// TODO: Handle games that are waiting for players properly
 	var count = game.users.length;
-	if (count == 1) {
+	if (!gameHasPlayers(game)) {
 		return "Waiting for players...";
 	} else {
 		var done = 1;
-		var s = "You";
+		var s = "Between you";
 		for (var i = 0; i < count; ++i) {
 			if (game.users[i] != gContext.username) {
 				if (done < count - 1) {
@@ -27,23 +56,78 @@ function GameInfo(parent, game) {
 	var _i = this;
 
 	this.content = Awe.createElement('div', parent, {
+		className: "game-info",
 		styles: {
 			width: "560px",
-			height: "70px",
+			height: "64px",
 			backgroundColor: "#444444",
 			margin: "10px"
 		}
 	});
 
-	Awe.createElement('div', this.content, {
+	var buttonText;
+	var buttonClass;
+	if (game) {
+		if (gameHasPlayers(game)) {
+			buttonText = "Play";
+			buttonClass = "btn-success";
+		} else {
+			buttonText = "Delete";
+			buttonClass = "btn-danger";
+		}
+	} else {
+		buttonText = "Start a new game";
+		buttonClass = "btn-primary";
+	}
+	
+	Awe.createElement('button', this.content, {
+		className: "float-right btn " + buttonClass,
 		attrs: {
-			innerText: gameParticipantString(game)
+			innerText: buttonText
 		},
 		styles: {
-			padding: "10px",
-			color: "#ffffff",
+			margin: "18px 15px"
 		}
 	});
+
+	if (game) {
+		Awe.createElement('div', this.content, {
+			attrs: {
+				innerText: game.type
+			},
+			styles: {
+				padding: "10px 10px 0px 10px",
+				color: "#ffffff",
+			}
+		});
+
+		Awe.createElement('div', this.content, {
+			attrs: {
+				innerText: gameParticipantString(game)
+			},
+			styles: {
+				padding: "10px 10px 0px 10px",
+				color: "#ffffff",
+			}
+		});
+	} else if (gParams.gameTypes && gParams.gameTypes.length > 1) {
+		var options = "";
+		for (var i = 0; i < gParams.gameTypes.length; ++i) {
+			options += '<option>' + gParams.gameTypes[i] + '</option>';
+		}
+		Awe.createElement('div', this.content, {
+			className: "control-group",
+			attrs: {
+				innerHTML:
+				'<label class="control-label" for="select-game-type">Game type:</label>\
+				<div class="controls">\
+					<select id="select-game-type">' +
+						options +
+					'</select>\
+				</div>'
+			}
+		});
+	}
 }
 
 // TODO: Change name. This should be more about the connection, not the game view...
@@ -53,6 +137,10 @@ function GameView(server) {
 	_i.root = document.getElementById('mainCon');
 
 	_i.context = {};
+
+	_i.headerDescription = document.getElementById("header-description");
+
+	_i.headerDescription.innerHTML = headerDescriptionString();
 
 	_i.buttonSignout = $("#signout");
 	_i.buttonSignin = $('#login-done');
@@ -192,21 +280,24 @@ function GameView(server) {
 				_i.gamesList.text('Loading games...');
 				_i.socket.send(JSON.stringify({
 					type: "get_games",
-					gametype: "checkers"
+					gameTypes: gParams.gameTypes,
+					gameType: gParams.gameType
 				}));
 			}
 		},
 		"SHOWING_GAMES" : {
 			start: function() {
+				parent = _i.gamesList.get(0);
 				if (_i.context.games && _i.context.games.length) {
-					_i.gamesList.get(0).innerText = "";
+					parent.innerText = "";
 					for (var i = 0; i < _i.context.games.length; ++i) {
-						new GameInfo(_i.gamesList.get(0), _i.context.games[i]);
+						new GameInfo(parent, _i.context.games[i]);
 					}
 				} else {
-					_i.gamesList.get(0).innerText = "No games";
+					parent.innerText = "No games";
 				}
-				// TODO: Add create game link
+				// Add create game link
+				new GameInfo(parent);
 			}
 		}
 	}, "NONE");

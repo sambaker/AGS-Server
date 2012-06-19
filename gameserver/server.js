@@ -94,9 +94,17 @@ var handlers = {
         });
     },
     get_games : function(ws, message, context) {
-        dbGames.view('gameserver/user_type', {
-            key: [context.user,message.gametype]
-        }, function(err, docs) {
+        var params = {};
+        if (message.gameTypes) {
+            params.keys = [];
+            message.gameTypes.forEach(function(t) {
+                params.keys.push([context.user,t]);
+            });
+        } else if (message.gameType) {
+            params.key = [context.user,message.gameType];
+        }
+        console.log("Params = ",params);
+        dbGames.view('gameserver/user_type', params, function(err, docs) {
             if (err) {
                 wssend(ws, {
                     type : "error",
