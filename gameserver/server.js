@@ -50,6 +50,7 @@ var handlers = {
             } else {
                 if (doc.password == message.password) {
                     context.authenticated = true;
+                    context.user = message.name;
                     wssend(ws, {
                         type : "authenticate",
                         success : true
@@ -67,13 +68,14 @@ var handlers = {
             }
         });
     },
-    signup : function(ws, message) {
+    signup : function(ws, message, context) {
         dbUser.post({
             _id: message.name,
             name: message.name,
             password: message.password
         }, function(err, res) {
             if (err) {
+                context.authenticated = false;
                 wssend(ws, {
                     type : "signup",
                     success : false,
@@ -82,9 +84,34 @@ var handlers = {
                     }
                 });
             } else {
+                context.user = message.name;
+                context.authenticated = true;
                 wssend(ws, {
                     type : "signup",
                     success : true
+                });
+            }
+        });
+    },
+    get_games : function(ws, message, context) {
+        dbGames.view('gameserver/user_type', {
+            key: [context.user,message.gametype]
+        }, function(err, docs) {
+            if (err) {
+                wssend(ws, {
+                    type : "error",
+                    error: {
+                        text: err.error + ": " + err.reason
+                    }
+                });
+            } else {
+                var games = [];
+                docs.forEach(function(doc) {
+                    games.push(doc);
+                });
+                wssend(ws, {
+                    type : "games",
+                    games : games
                 });
             }
         });
