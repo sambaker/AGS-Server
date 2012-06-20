@@ -1,38 +1,120 @@
 
 var Awe = require('./awe-core.js').Awe;
 Awe.StateMachine = require('./awe-state-machine.js').StateMachine;
-var server = require('http').createServer();
+var server = require('http').createServer(httpHandler);
 var WebSocketServer = require('ws').Server;
-console.log(WebSocketServer);
 var wss = new WebSocketServer({server: server});
 var cradle = require('cradle');
+var fs = require('fs');
+
+var games = {};
+var gameDefs = {};
+
+function validateGameDef(gameDef) {
+    // TODO: Validate all requirements
+    return gameDef != null;
+}
+
+function validateGame(game) {
+    // TODO: Validate all requirements
+    return game != null;
+}
+
+function loadGames() {
+    var suffix = '.def.js';
+    fs.readdir('./gameserver/games/', function(err, files) {
+        if (err) throw err;
+
+        files.forEach(function(file) {
+            var i = file.indexOf(suffix);
+            if (i > 0 && file.length == (suffix.length + i)) {
+                var gameName = file.slice(0, i);
+                if (!games[gameName]) {
+                    try {
+                        var gameDef = require('./games/'+file).Def;
+                        var game = require('./games/'+gameName+'.js').Game;
+                        if (!validateGameDef(gameDef)) {
+                            throw('Game definition invalid');
+                        }
+                        if (!validateGame(game)) {
+                            throw('Game invalid');
+                        }
+                        games[gameName] = {
+                            game: game,
+                            definition: gameDef
+                        }
+                        gameDefs[gameName] = gameDef;
+                    } catch (e) {
+                        console.log("ERROR: Game load failed");
+                        console.log("       game type:", gameName);
+                        console.log("       exception:", e);
+                    }
+                }
+            }
+        });
+    })
+}
+
+loadGames();
+
 var cradleConnection = new(cradle.Connection)('https://sam-baker.cloudant.com', 443, {
     auth: { username: 'sam-baker', password: 'xxxxxx' }
 });
 var dbUser = cradleConnection.database('users');
 var dbGames = cradleConnection.database('games');
 
-cradleConnection.databases(function(error, db) {
-    console.log(db);
-});
-
 server.listen(8000);
 
-// function handler (req, res) {
-//     fs.readFile(__dirname + '/index.html',
-//     function (err, data) {
-//         if (err) {
-//             res.writeHead(500);
-//             return res.end('Error loading index.html');
-//         }
+function httpHandler(req, res) {
+    var response = null;
+    var callback = null;
+    if (req.url.indexOf('/api/game-types') == 0) {
+        callback = Awe.getQueryParam('callback',req.url);
+        response = gameDefs;
+    }
 
-//         res.writeHead(200);
-//         res.end(data);
-//     });
-// }
+    if (response) {
+        res.writeHead(200);
+        var s = "";
+        if (callback) {
+            s = callback+'(';
+        }
+        s += JSON.stringify(response);
+        if (callback) {
+            s += ')';
+        }
+        res.end(s);
+    } else {
+        res.writeHead(404);
+        res.end();
+    }
+}
 
 function wssend(ws, o) {
     ws.send(JSON.stringify(o));
+}
+
+function sendFailure(ws, type, err) {
+    wssend(ws, {
+        type: type || "error",
+        success: false,
+        error: {
+            text: err
+        }
+    });
+}
+
+function handleError(ws, err) {
+    if (err) {
+        wssend(ws, {
+            type : "error",
+            error: {
+                text: err.error + ": " + err.reason
+            }
+        });
+        return true;
+    }
+    return false;
 }
 
 var handlers = {
@@ -93,6 +175,65 @@ var handlers = {
             }
         });
     },
+    create_game : function(ws, message, context) {
+        console.log("Create game request", message);
+        var type = message.gameType;
+        var def = gameDefs[type];
+        if (!def) {
+            sendFailure(ws, "create_game", "Unknown game type " + type);
+        } else {
+            // TODO: look for existing game in database without current user
+            // TODO: look for existing game in database without current user
+            // TODO: look for existing game in database without current user
+
+            // Need to find games where:
+            //  playable == false
+            //  (userCount - users.length - requestUsers.length) > 0
+            // So look up by [type,randomOpponentsNeeded]
+
+            var game = {
+                type: message.gameType,
+                requestUsers: message.requestUsers || [],
+                users: [ context.user ],
+                userCount: Math.max(message.userCount, def.minPlayers),
+                playable: userCount == 1 && def.minPlayers <= 1
+            }
+
+            dbGames.save(game, function(err, res) {
+                if (!handleError(ws, err)) {
+                    wssend(ws, {
+                        type: "create_game",
+                        success: true
+                    });
+                }
+            });
+        }
+    },
+    delete_game : function(ws, message, context) {
+        dbGames.get(message._id, function(err, doc) {
+            if (!handleError(ws, err)) {
+                var success = false;
+                doc.users.forEach(function(u) {
+                    if (u == context.user) {
+                        // Delete game
+                        dbGames.remove(message._id, message._rev, function(err, o) {
+                            if (!handleError(ws, err)) {
+                                success = true;
+                                wssend(ws, {
+                                    type: "delete_game",
+                                    success: true,
+                                    _id: message._id
+                                });
+                            }
+                        });
+                    }
+                });
+                if (!success) {
+                    sendFailure(ws, "delete_game", "Wrong user");
+                }
+            }
+        });
+    },
     get_games : function(ws, message, context) {
         var params = {};
         if (message.gameTypes) {
@@ -103,16 +244,9 @@ var handlers = {
         } else if (message.gameType) {
             params.key = [context.user,message.gameType];
         }
-        console.log("Params = ",params);
+        // Request active games
         dbGames.view('gameserver/user_type', params, function(err, docs) {
-            if (err) {
-                wssend(ws, {
-                    type : "error",
-                    error: {
-                        text: err.error + ": " + err.reason
-                    }
-                });
-            } else {
+            if (!handleError(ws, err)) {
                 var games = [];
                 docs.forEach(function(doc) {
                     games.push(doc);
@@ -123,13 +257,16 @@ var handlers = {
                 });
             }
         });
+
+        // TODO: Query non-realtime games other users have started with me:
+        // So look up by [type,randomOpponentsNeeded[x]]
     }
 }
 
 wss.on('connection', function(ws) {
-    var Game = require('./checkers_game.js').Game;
-    console.log("Client connected, creating game");
-    var game = new Game(Game.createGameState());
+    // var Game = require('./checkers_game.js').Game;
+    // console.log("Client connected, creating game");
+    // var game = new Game(Game.createGameState());
     var context = {};
 
     var states = {
@@ -163,10 +300,11 @@ wss.on('connection', function(ws) {
         }
     });
     ws.on('close', function() {
-        console.log('disconnected');
+        console.log('Socket disconnected');
+        ws = null;
     });
     ws.on('error', function() {
-        console.log('error', arguments);
+        console.log('Socket error', arguments);
     });
 });
 

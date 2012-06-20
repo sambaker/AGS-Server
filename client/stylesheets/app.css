@@ -1,15 +1,26 @@
 
 .row {
 	margin-top: 10px;
-	margin-bottom: 20px;
+}
+
+.well {
+	margin-bottom: 5px;
 }
 
 .header {
-	height: 85px;
 }
 
 .header h2 {
 	margin-top: -6px;
+}
+
+#auth-status {
+	line-height: 28px;
+	padding: 0px 12px;
+	margin: 0px 15px;
+	/*border: 2px solid #44bb44;*/
+	background-color: #44bb44;
+	color: #ffffff;
 }
 
 .connectivity {
