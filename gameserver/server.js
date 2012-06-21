@@ -10,6 +10,13 @@ var fs = require('fs');
 var games = {};
 var gameDefs = {};
 
+// Map Connected Authenticated Users to web sockets
+var caus = {};
+
+function dateToObject(date) {
+    return [date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds()];
+}
+
 function validateGameDef(gameDef) {
     // TODO: Validate all requirements
     return gameDef != null;
@@ -137,6 +144,7 @@ var handlers = {
                         type : "authenticate",
                         success : true
                     });
+                    caus[context.user] = ws;
                 } else {
                     context.authenticated = false;
                     console.log("Failed auth: Wrong password");
@@ -175,36 +183,91 @@ var handlers = {
             }
         });
     },
-    create_game : function(ws, message, context) {
-        console.log("Create game request", message);
+    join_game : function(ws, message, context) {
         var type = message.gameType;
         var def = gameDefs[type];
         if (!def) {
-            sendFailure(ws, "create_game", "Unknown game type " + type);
+            sendFailure(ws, "join_game", "Unknown game type " + type);
         } else {
-            // TODO: look for existing game in database without current user
-            // TODO: look for existing game in database without current user
-            // TODO: look for existing game in database without current user
+            // This query doesn't filter games that I'm already in, so pull in a block of
+            // results and then filter
+            var params = {
+                startkey: [type],
+                endkey: [type,{}],
+                limit: 10
+            };
 
-            // Need to find games where:
-            //  playable == false
-            //  (userCount - users.length - requestUsers.length) > 0
-            // So look up by [type,randomOpponentsNeeded]
+            // Create a function that will be used on failure to find new games
+            function createNewGame() {
+                // Create a new game
+                var userCount = Math.max(message.userCount, def.minPlayers);
+                var game = {
+                    type: message.gameType,
+                    requestUsers: message.requestUsers || [],
+                    users: [ context.user ],
+                    userCount: userCount,
+                    playable: userCount == 1 && def.minPlayers <= 1,
+                    createdAt: dateToObject(new Date())
+                }
 
-            var game = {
-                type: message.gameType,
-                requestUsers: message.requestUsers || [],
-                users: [ context.user ],
-                userCount: Math.max(message.userCount, def.minPlayers),
-                playable: userCount == 1 && def.minPlayers <= 1
+                dbGames.save(game, function(err, res) {
+                    if (!handleError(ws, err)) {
+                        dbGames.get(res.id, function(err, doc) {
+                            if (!handleError(ws, err)) {
+                                wssend(ws, {
+                                    type: "join_game",
+                                    success: true,
+                                    game: doc
+                                });
+                            }
+                        });
+                    }
+                });
             }
 
-            dbGames.save(game, function(err, res) {
-                if (!handleError(ws, err)) {
-                    wssend(ws, {
-                        type: "create_game",
-                        success: true
+            dbGames.view('gameserver/need_players', params, function(err, docs) {
+                if (handleError(ws, err)) {
+                    createNewGame();
+                } else {
+                    var joinedExistingGame = false;
+                    docs.forEach(function(doc) {
+                        if (!joinedExistingGame && doc.users.indexOf(context.user) == -1) {
+                            // Add user to game and save!
+                            doc.users.push(context.user);
+                            if (doc.users.length == doc.userCount) {
+                                doc.gameState = games[doc.type].game.createGameState(doc);
+                                doc.playable = true;
+                            }
+                            joinedExistingGame = true;
+
+                            // Send notifications to existing users that are connected
+                            for (var i = 0; i < doc.users.length - 1; ++i) {
+                                var uws = caus[doc.users[i]];
+                                if (uws) {
+                                    wssend(uws, {
+                                        type: "games",
+                                        games: [doc]
+                                    });
+                                }
+                            }
+
+                            dbGames.save(doc._id, doc._rev, doc, function(err, res) {
+                                if (handleError(ws, err)) {
+                                    createNewGame();
+                                } else {
+                                    wssend(ws, {
+                                        type: "join_game",
+                                        success: true,
+                                        game: doc
+                                    });
+                                }
+                            });
+                        }
                     });
+
+                    if (!joinedExistingGame) {
+                        createNewGame();
+                    }
                 }
             });
         }
@@ -260,12 +323,11 @@ var handlers = {
 
         // TODO: Query non-realtime games other users have started with me:
         // So look up by [type,randomOpponentsNeeded[x]]
+        //dbGames.view('gameserver/requested_player')
     }
 }
 
 wss.on('connection', function(ws) {
-    // var Game = require('./checkers_game.js').Game;
-    // console.log("Client connected, creating game");
     // var game = new Game(Game.createGameState());
     var context = {};
 
@@ -276,7 +338,6 @@ wss.on('connection', function(ws) {
 
     var sm = new Awe.StateMachine("Connection", states, "CONNECTED");
     sm.tracing = true;
-    //console.log("Statemachine is ", sm);
 
     ws.on('message', function(message) {
         var o = JSON.parse(message);
@@ -301,6 +362,9 @@ wss.on('connection', function(ws) {
     });
     ws.on('close', function() {
         console.log('Socket disconnected');
+        if (context.user && caus[context.user]) {
+            delete caus[context.user];
+        }
         ws = null;
     });
     ws.on('error', function() {

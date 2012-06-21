@@ -19,7 +19,7 @@ function filterGameDefs(gameDefs) {
 }
 
 function gameHasPlayers(game) {
-	return game.users.length > 1;
+	return game.playable;
 }
 
 function headerDescriptionString() {
@@ -110,7 +110,7 @@ function GameInfo(parent, game) {
 			var def = gParams.gameDefs[type];
 			// TODO: Process more options, min/max player, opponent, etc
 			gContext.socket.send(JSON.stringify({
-				type: "create_game",
+				type: "join_game",
 				gameType: type,
 				userCount: def.minPlayers,
 				requestUsers: []
@@ -335,8 +335,9 @@ function GameView(server) {
 			"SHOWING_GAMES" : {
 				start: function() {
 					parent = _i.gamesList.get(0);
+					_i.gameInfoById = {};
 					if (gContext.games && gContext.games.length) {
-						parent.innerText = "";
+						parent.innerHTML = "";
 						for (var i = 0; i < gContext.games.length; ++i) {
 							var gi = new GameInfo(parent, gContext.games[i]);
 							_i.gameInfoById[gContext.games[i]._id] = gi;
@@ -442,13 +443,52 @@ function GameView(server) {
 			games : function(data) {
 				// TODO:
 				console.log("GOT GAMES FROM SERVER: ", data);
-				gContext.games = data.games;
-				_i.smUI.requestState("SHOWING_GAMES");
+				if (gContext.games) {
+					for (var i = 0; i < data.games.length; ++i) {
+						var found = false;
+						for (var j = 0; j < gContext.games.length; ++j) {
+							// Found match
+							if (gContext.games[j]._id == data.games[i]._id) {
+								// Update existing game (should never happen)
+								gContext.games[j] = data.games[i];
+								found = true;
+								break;
+							}
+						}
+						if (!found) {
+							// Append new game
+							gContext.games.push(data.games[i]);
+							break;
+						}
+					}
+				} else {
+					gContext.games = data.games;
+				}
+				if (_i.smUI.getCurrentStateId() == "SHOWING_GAMES") {
+					_i.smUI.restartCurrentState();
+				} else {
+					_i.smUI.requestState("SHOWING_GAMES");
+				}
 			},
 			delete_game : function(data) {
 				if (data.success && _i.gameInfoById[data._id]) {
-					var el = _i.gameInfoById[data._id].content;
-					el.parentNode.removeChild(el);
+					for (var i = 0; i < gContext.games.length; ++i) {
+						if (gContext.games[i]._id == data._id) {
+							gContext.games.splice(i, 1);
+							break;
+						}
+					}
+					if (_i.smUI.getCurrentStateId() == "SHOWING_GAMES") {
+						_i.smUI.restartCurrentState();
+					}
+				}
+			},
+			join_game : function(data) {
+				if (data.success) {
+					gContext.games.unshift(data.game);
+					if (_i.smUI.getCurrentStateId() == "SHOWING_GAMES") {
+						_i.smUI.restartCurrentState();
+					}
 				}
 			}
 		}
