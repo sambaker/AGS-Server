@@ -1,4 +1,4 @@
 
 function startup() {
-	var gameView = new GameView('localhost:8000');
+	var gameView = new ArtefactGameServerConnectionView('localhost:8000');
 }

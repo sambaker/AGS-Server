@@ -1,3 +1,5 @@
+(function(global, document, undefined) {
+
 var gParams = {
 	debug: true,
 	gameTypes : ["checkers","rush_hour"]
@@ -181,8 +183,7 @@ function GameInfo(parent, game) {
 	}
 }
 
-// TODO: Change name. This should be more about the connection, not the game view...
-function GameView(server) {
+function ArtefactGameServerConnectionView(server) {
 
 	var webSocketServer = 'ws://' + server;
 	var httpServer = 'http://' + server;
@@ -410,6 +411,7 @@ function GameView(server) {
 					if (newUser) {
 						_i.smAuth.requestState("CREATE_ACCOUNT");
 						showConnected();
+						newUser = false;
 					} else {
 						_i.smAuth.requestState("AUTHENTICATING");
 						showConnected();
@@ -544,3 +546,7 @@ function GameView(server) {
 		_i.init();
 	});
 }
+
+global.ArtefactGameServerConnectionView = ArtefactGameServerConnectionView;
+
+})(this, document);
