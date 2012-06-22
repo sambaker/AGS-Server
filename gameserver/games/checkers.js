@@ -35,11 +35,18 @@ function CheckersGame(sessionState, gameState, debug) {
 	_i.userToPlayer = {};
 	_i.userToPlayer[sessionState.users[0]] = 1;
 	_i.userToPlayer[sessionState.users[1]] = 2;
+	_i.playerToUser = {};
+	_i.playerToUser[1] = sessionState.users[0];
+	_i.playerToUser[2] = sessionState.users[1];
 }
 
 // Returns true if the given user is currently allowed to take a turn
 CheckersGame.prototype.allowTurn = function(user) {
 	return this.userToPlayer[user] == this.gameState.nextPlayer;
+}
+
+CheckersGame.prototype.getNextPlayer = function(user) {
+	return this.playerToUser[this.gameState.nextPlayer];
 }
 
 CheckersGame.prototype.getSquare = function(pos) {

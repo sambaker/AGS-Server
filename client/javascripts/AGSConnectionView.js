@@ -95,6 +95,7 @@ function GameInfo(parent, game) {
 				gContext.currentGame = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
 				console.log("CG:",gContext.currentGame);
 				// TODO: Render game!!!
+				gParams.clients[game.type].show(game, gContext.currentGame);
 			}
 		} else {
 			buttonText = "Delete";
@@ -183,7 +184,11 @@ function GameInfo(parent, game) {
 	}
 }
 
-function ArtefactGameServerConnectionView(server) {
+function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
+
+	gParams.gameTypes = gameTypes;
+	gParams.clients = clients;
+	gParams.debug = debug;
 
 	var webSocketServer = 'ws://' + server;
 	var httpServer = 'http://' + server;
@@ -191,7 +196,6 @@ function ArtefactGameServerConnectionView(server) {
 	var _i = this;
 
 	_i.init = function() {
-		_i.root = document.getElementById('mainCon');
 
 		// Map game id to game info DOM elements
 		_i.gameInfoById = {};
@@ -545,6 +549,10 @@ function ArtefactGameServerConnectionView(server) {
 		filterGameDefs(data, httpServer);
 		_i.init();
 	});
+
+	_i.whoAmI = function() {
+		return gContext.username;
+	}
 }
 
 global.ArtefactGameServerConnectionView = ArtefactGameServerConnectionView;

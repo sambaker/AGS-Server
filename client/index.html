@@ -24,78 +24,78 @@
 <body>
 
 <body>
-		<div id="mainCon" class="container">
+		<div id="root" class="container">
 
-				<!-- Header -->
-				<div class="row">
-					<div class="header span8">
-						<div class="header well">
-							<h2>Artefact Games</h2>
-							<div id="header-description">
-								This game is a test of the Artefact Game Server.
-							</div>
+			<!-- Header -->
+			<div class="row">
+				<div class="header span8">
+					<div class="header well">
+						<h2>Artefact Games</h2>
+						<div id="header-description">
+							This game is a test of the Artefact Game Server.
 						</div>
 					</div>
 				</div>
-				<div class="row">
-					<div class="current-user span8">
+			</div>
+			<div class="row">
+				<div class="current-user span8">
+					<div class="well">
+						<div class="float-right" style>
+							<button id="signout" type="button" class="btn btn-warning">Sign out</button>
+						</div>
+						<span id="auth-status" class="float-right"></span>
+						<h4>User</h4>
+						<br />
+						<span id="username-display">none</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Connectivity -->
+			<div class="row">
+				<div class="connectivity span8">
+					<div id="connection" class="connection not-connected">
 						<div class="well">
-							<div class="float-right" style>
-								<button id="signout" type="button" class="btn btn-warning">Sign out</button>
-							</div>
-							<span id="auth-status" class="float-right"></span>
-							<h4>User</h4>
-							<br />
-							<span id="username-display">none</span>
+							<h4 class="inline not-connected">Not Connected</h4>
+							<h4 class="inline connected">Connected</h4>
+							<button id="disconnect" type="button" class="span2 btn btn-inverse float-right connected">Disconnect</button>
+							<button id="connect" type="button" class="span2 btn btn-success float-right not-connected">Connect</button>
+							<select id="connection-type" class="float-right">
+								<option>I'm ready to play for a while</option>
+								<option>I just want to take a turn</option>
+							</select>
 						</div>
 					</div>
 				</div>
+			</div>
 
-				<!-- Connectivity -->
-				<div class="row">
-					<div class="connectivity span8">
-						<div id="connection" class="connection not-connected">
-							<div class="well">
-								<h4 class="inline not-connected">Not Connected</h4>
-								<h4 class="inline connected">Connected</h4>
-								<button id="disconnect" type="button" class="span2 btn btn-inverse float-right connected">Disconnect</button>
-								<button id="connect" type="button" class="span2 btn btn-success float-right not-connected">Connect</button>
-								<select id="connection-type" class="float-right">
-									<option>I'm ready to play for a while</option>
-									<option>I just want to take a turn</option>
-								</select>
-							</div>
-						</div>
+			<!-- Login dialog -->
+			<div class="modal hide fade" id="login-dialog">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">x</button>
+					<h3>Enter username and password</h3>
+				</div>
+				<div class="modal-body">
+					<input id="username-edit" type="text" class="span6" placeholder="Enter username">
+					<input id="password-edit" type="password" class="span6" placeholder="Enter password">
+					<label class="checkbox">
+							<input id="remember-me-check" type="checkbox"> Remember me</input>
+					</label>
+				</div>
+				<div class="modal-footer">
+					<button id="sign-up" type="button" class="btn">Create Account</button>
+					<button id="login-done" type="button" class="btn btn-primary" data-dismiss="modal">Sign in</button>
+				</div>
+			</div>
+
+			<!-- Game display -->
+			<div class="row">
+				<div class="span8">
+					<div id='games-list' class="well">
+						Waiting for connection...
 					</div>
 				</div>
-
-				<!-- Login dialog -->
-				<div class="modal hide fade" id="login-dialog">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal">x</button>
-						<h3>Enter username and password</h3>
-					</div>
-					<div class="modal-body">
-						<input id="username-edit" type="text" class="span6" placeholder="Enter username">
-						<input id="password-edit" type="password" class="span6" placeholder="Enter password">
-						<label class="checkbox">
-								<input id="remember-me-check" type="checkbox"> Remember me</input>
-						</label>
-					</div>
-					<div class="modal-footer">
-						<button id="sign-up" type="button" class="btn">Create Account</button>
-						<button id="login-done" type="button" class="btn btn-primary" data-dismiss="modal">Sign in</button>
-					</div>
-				</div>
-
-				<!-- Game display -->
-				<div class="row">
-					<div class="span8">
-						<div id='games-list' class="well">
-							Waiting for connection...
-						</div>
-					</div>
-				</div>
+			</div>
 		</div>
 </body>
 
