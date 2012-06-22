@@ -1,19 +1,27 @@
 var gParams = {
+	debug: true,
 	gameTypes : ["checkers","rush_hour"]
 	//gameType: "checkers"
 }
 
 var gContext = {};
 
-function filterGameDefs(gameDefs) {
+function filterGameDefs(gameDefs, server) {
 	var requestedTypes = gParams.gameTypes || [gParams.gameType];
 	gParams.gameTypes = [];
 	gParams.gameDefs = {};
+	gParams.gameClasses = {};
+	function add(t) {
+		gParams.gameTypes.push(t);
+		gParams.gameDefs[t] = gameDefs[t];
+		new injectJS(server + '/api/games/' + t, function(f) {
+			gParams.gameClasses[t] = f;
+		});
+	}
 	for (var i = 0; i < requestedTypes.length; ++i) {
 		var t = requestedTypes[i];
 		if (gameDefs[t]) {
-			gParams.gameTypes.push(t);
-			gParams.gameDefs[t] = gameDefs[t];
+			add(t);
 		}
 	}
 }
@@ -82,7 +90,9 @@ function GameInfo(parent, game) {
 			buttonText = "Play";
 			buttonClass = "btn-success";
 			buttonCallback = function() {
-				// TODO: Play game
+				gContext.currentGame = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
+				console.log("CG:",gContext.currentGame);
+				// TODO: Render game!!!
 			}
 		} else {
 			buttonText = "Delete";
@@ -112,7 +122,7 @@ function GameInfo(parent, game) {
 			gContext.socket.send(JSON.stringify({
 				type: "join_game",
 				gameType: type,
-				userCount: def.minPlayers,
+				userCount: def.maxPlayers,
 				requestUsers: []
 			}));
 		}
@@ -529,8 +539,8 @@ function GameView(server) {
 		}
 	}
 
-	injectJS(httpServer + '/api/game-types', function(data) {
-		filterGameDefs(data);
+	new injectJS(httpServer + '/api/game-types', function(data) {
+		filterGameDefs(data, httpServer);
 		_i.init();
 	});
 }

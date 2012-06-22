@@ -46,9 +46,11 @@ function loadGames() {
                         if (!validateGame(game)) {
                             throw('Game invalid');
                         }
+                        var source = fs.readFileSync('./gameserver/games/'+gameName+'.js', 'utf8');
                         games[gameName] = {
                             game: game,
-                            definition: gameDef
+                            definition: gameDef,
+                            source: source
                         }
                         gameDefs[gameName] = gameDef;
                     } catch (e) {
@@ -59,7 +61,7 @@ function loadGames() {
                 }
             }
         });
-    })
+    });
 }
 
 loadGames();
@@ -75,9 +77,19 @@ server.listen(8000);
 function httpHandler(req, res) {
     var response = null;
     var callback = null;
+    var gameJSUrl = '/api/games/';
+    var startParams = req.url.indexOf('?');
     if (req.url.indexOf('/api/game-types') == 0) {
         callback = Awe.getQueryParam('callback',req.url);
-        response = gameDefs;
+        response = JSON.stringify(gameDefs);
+    } else if (req.url.indexOf(gameJSUrl) == 0) {
+        callback = Awe.getQueryParam('callback',req.url);
+        var start = gameJSUrl.length;
+        var gameName = req.url.slice(start, startParams);
+        if (games[gameName]) {
+            // Serve file
+            response = games[gameName].source;
+        }
     }
 
     if (response) {
@@ -86,7 +98,7 @@ function httpHandler(req, res) {
         if (callback) {
             s = callback+'(';
         }
-        s += JSON.stringify(response);
+        s += response;
         if (callback) {
             s += ')';
         }
@@ -242,12 +254,14 @@ var handlers = {
 
                             // Send notifications to existing users that are connected
                             for (var i = 0; i < doc.users.length - 1; ++i) {
-                                var uws = caus[doc.users[i]];
-                                if (uws) {
-                                    wssend(uws, {
-                                        type: "games",
-                                        games: [doc]
-                                    });
+                                if (doc.users[i] != context.user) {
+                                    var uws = caus[doc.users[i]];
+                                    if (uws) {
+                                        wssend(uws, {
+                                            type: "games",
+                                            games: [doc]
+                                        });
+                                    }
                                 }
                             }
 

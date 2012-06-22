@@ -33,4 +33,6 @@ RushHourGame.createGameState = function(sessionState) {
 
 global.Game = RushHourGame;
 
+return global.Game;
+
 })(typeof exports === 'undefined' ? this : exports)

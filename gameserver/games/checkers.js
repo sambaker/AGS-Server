@@ -172,4 +172,6 @@ global.Game.test = function() {
 	}
 }
 
+return global.Game;
+
 })(typeof exports === 'undefined' ? this : exports)
