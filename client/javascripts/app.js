@@ -140,7 +140,7 @@ function CheckersClient(parent) {
 		}
 	});
 
-	function updatePieces() {
+	function updatePieces(listen) {
 		for (var y = 0; y < 8; ++y) {
 			for (var x = 0; x < 8; ++x) {
 				if (boardPieces[x][y]) {
@@ -149,7 +149,7 @@ function CheckersClient(parent) {
 				}
 				var current = _i.game.getSquare({x:x,y:y});
 				if (current) {
-					boardPieces[x][y] = Awe.createElement('image', boardSquares[x][y], {
+					var piece = Awe.createElement('image', boardSquares[x][y], {
 						attrs: {
 							src: current == 1 ? 'images/check_p1.png' : 'images/check_p2.png'
 						},
@@ -158,6 +158,17 @@ function CheckersClient(parent) {
 							height: '84px'
 						}
 					});
+					boardPieces[x][y] = piece;
+					if (listen && current == _i.game.gameState.nextPlayer) {
+						Awe.enableDrag(piece, {
+						    anchor: new Awe.DragAnchorTopLeft(),
+						    // filters: new Awe.DragFilterLimitAxes(x, x, y, y + sliderHeight),
+						    updater: new Awe.DragUpdaterTopLeft(),
+						    onDragMove: function(event) {
+						    	// TODO:
+						    }							
+						});
+					}
 				}
 			}
 		}
@@ -179,7 +190,7 @@ function CheckersClient(parent) {
 				status.innerText = "Your turn!";
 				status.style.color = "#33cc33";
 				currentMove = [];
-				updatePieces();
+				updatePieces(true);
 			}
 		}
 	}, null);
@@ -196,8 +207,6 @@ function CheckersClient(parent) {
 			$close = $(close);
 			$close.click(_i.hide);
 		}
-
-		//updatePieces();
 
 		if (game.allowTurn(gGameview.whoAmI())) {
 			_i.smMove.requestState("chooseTurn", 0);
