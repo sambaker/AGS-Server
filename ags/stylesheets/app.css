@@ -60,3 +60,11 @@
 	padding-left: 100px;
 	padding-top: 18px;
 }
+
+.p1-piece {
+	background-image: url(/ags/images/check_p1.png);
+}
+
+.p2-piece {
+	background-image: url(/ags/images/check_p2.png);
+}

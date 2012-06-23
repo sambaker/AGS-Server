@@ -112,15 +112,23 @@ function CheckersClient(parent) {
 
 	var currentMove = null;
 
+	var boardMargins = { x: 8, y: 8 };
+	var boardSquareSize = 84;
+
+	function getSquarePosition(x, y) {
+		return { x: boardMargins.x + boardSquareSize * x, y: boardMargins.y + boardSquareSize * y };
+	}
+
 	for (var y = 0; y < 8; ++y) {
 		for (var x = 0; x < 8; ++x) {
+			var p = getSquarePosition(x, y);
 			var square = Awe.createElement('div', board, {
 				styles: {
 					position: 'absolute',
-					top: 8+84*y+'px',
-					left: 8+84*x+'px',
-					width: '84px',
-					height: '84px',
+					top: p.y+'px',
+					left: p.x+'px',
+					width: boardSquareSize+'px',
+					height: boardSquareSize+'px',
 					backgroundColor: ((x ^ y) & 1) ? '#000000' : '#ffffff'
 				}
 			});
@@ -140,36 +148,93 @@ function CheckersClient(parent) {
 		}
 	});
 
+	function updatePiece(x, y, listen) {
+		if (boardPieces[x][y]) {
+			board.removeChild(boardPieces[x][y]);
+			boardPieces[x][y] = null;
+		}
+		var current = _i.game.getSquare({x:x,y:y});
+		if (current) {
+			var p = getSquarePosition(x, y);
+			var piece = Awe.createElement('div', board, {
+				className: current == 1 ? 'p1-piece' : 'p2-piece',
+				styles: {
+					position: 'absolute',
+					top: p.y+'px',
+					left: p.x+'px',
+					width: boardSquareSize+'px',
+					height: boardSquareSize+'px'
+				}
+			});
+			piece.boardPos = { x: x, y: y };
+			boardPieces[x][y] = piece;
+			if (listen && current == _i.game.gameState.nextPlayer) {
+				Awe.enableDrag(piece, {
+				    //anchor: new Awe.DragAnchorTopLeft(),
+				    // filters: new Awe.DragFilterLimitAxes(x, x, y, y + sliderHeight),
+				    updater: {
+				    	move: function(el, evt) {
+				    	}
+				    },
+				    onDragStart: function(event) {
+				    	piece._left = xLeft(piece);
+				    	piece._top = xTop(piece);
+				    	piece.style.zIndex = 1000;
+		    			piece.moveTo = null;
+				    },
+				    onDragMove: function(event) {
+				    	// TODO: Remove xPageX/Y, they can be very slow
+						var boardPos = { x: xPageX(board) + boardMargins.x, y: xPageY(board) + boardMargins.y };
+			    		piece._top += event.delta.y;
+			    		piece._left += event.delta.x;
+			    		var boardX = event.clientPos.x - boardPos.x;
+			    		var boardY = event.clientPos.y - boardPos.y;
+			    		boardX = Math.floor(boardX / boardSquareSize);
+			    		boardY = Math.floor(boardY / boardSquareSize);
+			    		var turn = {
+			    			from: piece.boardPos,
+			    			to: { x: boardX, y: boardY },
+			    			turnType: 'move'
+			    		}
+			    		if (_i.game.takeTurn(gGameview.whoAmI(),turn,true)) {
+				    		piece.style.left = boardMargins.x + boardX * boardSquareSize + 'px';
+				    		piece.style.top = boardMargins.y + boardY * boardSquareSize + 'px';
+				    		piece.moveTo = turn.to;
+			    		} else {
+			    			piece.moveTo = null;
+			    			piece.style.border = null;
+				    		piece.style.left = piece._left + 'px';
+				    		piece.style.top = piece._top + 'px';
+			    		}
+				    },
+				    onDragEnd: function(event) {
+				    	if (piece.moveTo) {
+				    		var turn = {
+				    			from: piece.boardPos,
+				    			to: piece.moveTo,
+				    			turnType: 'move'
+				    		}
+				    		if (_i.game.takeTurn(gGameview.whoAmI(),turn)) {
+					    		// TODO: Send move to server
+					    		gGameview.takeTurn(turn)
+
+					    		// TODO: Allow multiple turns
+					    		_i.smMove.requestState('opponentTurn');
+				    		}
+				    	} else {
+				    		_i.smMove.restartCurrentState();
+				    	}
+				    	piece.style.zIndex = 0;
+				    }
+				});
+			}
+		}
+	}
+
 	function updatePieces(listen) {
 		for (var y = 0; y < 8; ++y) {
 			for (var x = 0; x < 8; ++x) {
-				if (boardPieces[x][y]) {
-					boardSquares[x][y].removeChild(boardPieces[x][y]);
-					boardPieces[x][y] = null;
-				}
-				var current = _i.game.getSquare({x:x,y:y});
-				if (current) {
-					var piece = Awe.createElement('image', boardSquares[x][y], {
-						attrs: {
-							src: current == 1 ? 'images/check_p1.png' : 'images/check_p2.png'
-						},
-						styles: {
-							width: '84px',
-							height: '84px'
-						}
-					});
-					boardPieces[x][y] = piece;
-					if (listen && current == _i.game.gameState.nextPlayer) {
-						Awe.enableDrag(piece, {
-						    anchor: new Awe.DragAnchorTopLeft(),
-						    // filters: new Awe.DragFilterLimitAxes(x, x, y, y + sliderHeight),
-						    updater: new Awe.DragUpdaterTopLeft(),
-						    onDragMove: function(event) {
-						    	// TODO:
-						    }							
-						});
-					}
-				}
+				updatePiece(x, y, listen);
 			}
 		}
 	}
@@ -216,6 +281,7 @@ function CheckersClient(parent) {
 	}
 
 	_i.hide = function() {
+		gGameview.exitGame();
 		parent.removeChild(_i.content);
 	}
 }
@@ -227,7 +293,11 @@ function startup() {
 		checkers: new CheckersClient(root)
 	}
 
-	gGameview = new ArtefactGameServerConnectionView('localhost:8000',
+	var gameServer = 'localhost:8000';
+	if (document.location.href.indexOf('client.artefactgroup') >= 0) {
+		gameServer = 'dev.artefactgroup.com:8000';
+	}
+	gGameview = new ArtefactGameServerConnectionView(gameServer,
 		["checkers"],
 		clients,
 		true);

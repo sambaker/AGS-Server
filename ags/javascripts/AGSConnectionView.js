@@ -80,6 +80,7 @@ function GameInfo(parent, game) {
 			width: "560px",
 			height: "64px",
 			backgroundColor: "#444444",
+			borderRadius: "12px",
 			margin: "10px"
 		}
 	});
@@ -92,10 +93,7 @@ function GameInfo(parent, game) {
 			buttonText = "Play";
 			buttonClass = "btn-success";
 			buttonCallback = function() {
-				gContext.currentGame = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
-				console.log("CG:",gContext.currentGame);
-				// TODO: Render game!!!
-				gParams.clients[game.type].show(game, gContext.currentGame);
+				gContext.gameServer.smUI.requestState("PLAYING_GAME", game);
 			}
 		} else {
 			buttonText = "Delete";
@@ -189,6 +187,8 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 	gParams.gameTypes = gameTypes;
 	gParams.clients = clients;
 	gParams.debug = debug;
+
+	gContext.gameServer = this;
 
 	var webSocketServer = 'ws://' + server;
 	var httpServer = 'http://' + server;
@@ -363,6 +363,14 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 					// Add create game link
 					new GameInfo(parent);
 				}
+			},
+			"PLAYING_GAME" : {
+				start: function(prevState, game) {
+					gContext.currentGame = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
+					console.log("CG:",gContext.currentGame);
+					// Render game!!!
+					gParams.clients[game.type].show(game, gContext.currentGame);
+				}
 			}
 		}, "NONE");
 
@@ -482,6 +490,13 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 				}
 				if (_i.smUI.getCurrentStateId() == "SHOWING_GAMES") {
 					_i.smUI.restartCurrentState();
+				} else if (_i.smUI.getCurrentStateId() == "PLAYING_GAME") {
+					var currentGameId = gContext.currentGame.sessionState._id;
+					for (var i = 0; i < gContext.games.length; ++i) {
+						if (gContext.games[i]._id == currentGameId) {
+							_i.smUI.restartCurrentState(gContext.games[i]);
+						}
+					}
 				} else {
 					_i.smUI.requestState("SHOWING_GAMES");
 				}
@@ -552,6 +567,20 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 
 	_i.whoAmI = function() {
 		return gContext.username;
+	}
+
+	_i.takeTurn = function(turn) {
+		gContext.socket.send(JSON.stringify({
+			type: "take_turn",
+			game: gContext.currentGame.sessionState._id,
+			turn: turn
+		}));
+	}
+
+	_i.exitGame = function() {
+		if (_i.smUI.getCurrentStateId() == "PLAYING_GAME") {
+			_i.smUI.requestState("SHOWING_GAMES");
+		}
 	}
 }
 

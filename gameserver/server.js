@@ -195,6 +195,51 @@ var handlers = {
             }
         });
     },
+    take_turn : function(ws, message, context) {
+        // TODO: Cache connected games in memory
+        function takeTurnFailed(revertTo) {
+            wssend(ws, {
+                type: 'take_turn',
+                success: false,
+                game: revertTo
+            });
+        }
+        dbGames.get(message.game, function(err, doc) {
+            if (!handleError(ws, err)) {
+                var game = new games[doc.type].game(doc, doc.gameState);
+                if (game.takeTurn(context.user, message.turn)) {
+                    var savedGameState = doc.gameState;
+                    doc.gameState = game.gameState;
+                    dbGames.save(doc._id, doc._rev, doc, function(err, res) {
+                        if (handleError(ws, err)) {
+                            doc.gameState = savedGameState;
+                            takeTurnFailed(doc);
+                        } else {
+                            wssend(ws, {
+                                type: "take_turn",
+                                success: true
+                            });
+
+                            // Update other connected clients
+                            for (var i = 0; i < doc.users.length; ++i) {
+                                if (doc.users[i] != context.user) {
+                                    var uws = caus[doc.users[i]];
+                                    if (uws) {
+                                        wssend(uws, {
+                                            type: "games",
+                                            games: [doc]
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    takeTurnFailed(doc);
+                }
+            }
+        });
+    },
     join_game : function(ws, message, context) {
         var type = message.gameType;
         var def = gameDefs[type];

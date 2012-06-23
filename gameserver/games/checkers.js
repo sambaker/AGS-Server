@@ -45,7 +45,7 @@ CheckersGame.prototype.allowTurn = function(user) {
 	return this.userToPlayer[user] == this.gameState.nextPlayer;
 }
 
-CheckersGame.prototype.getNextPlayer = function(user) {
+CheckersGame.prototype.getNextPlayer = function() {
 	return this.playerToUser[this.gameState.nextPlayer];
 }
 
@@ -72,6 +72,16 @@ CheckersGame.prototype.takeTurn = function(user, turn, validateOnly) {
 	var me = this.gameState.nextPlayer;
 	var them = (me == 1 ? 2 : 1);
 	if (turn.turnType == 'move') {
+		if (turn.from.x < 0 ||
+			turn.from.y < 0 ||
+			turn.from.x >= 8 ||
+			turn.from.y >= 8 ||
+			turn.to.x < 0 ||
+			turn.to.y < 0 ||
+			turn.to.x >= 8 ||
+			turn.to.y >= 8) {
+			return false;
+		}
 		// TODO: Handle kings
 		// TODO: Allow turn.to to be array for hopping multiple pieces
 		if (this.getSquare(turn.from) == me &&
@@ -94,12 +104,12 @@ CheckersGame.prototype.takeTurn = function(user, turn, validateOnly) {
 				if (!validateOnly) {
 					this.setSquare(turn.from, null);
 					this.setSquare(turn.to, me);
+					this.gameState.nextPlayer = them;
 				}
 
 				if (this.debug) {
 					this.updateBoardString();
 				}
-				this.gameState.nextPlayer = them;
 				// Move is valid
 				return {};
 			} else if (dxAbs == 2 && dyAbs == 2) {
@@ -112,12 +122,12 @@ CheckersGame.prototype.takeTurn = function(user, turn, validateOnly) {
 						this.setSquare(over, null);
 						this.setSquare(turn.from, null);
 						this.setSquare(turn.to, me);
+						this.gameState.nextPlayer = them;
 					}
 					if (this.debug) {
 						this.updateBoardString();
 					}
-					this.gameState.nextPlayer = them;
-					// Move is valid and chainable
+						// Move is valid and chainable
 					return {chainable: true};
 				}
 			}
