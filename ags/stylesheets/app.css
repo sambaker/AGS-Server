@@ -68,3 +68,11 @@
 .p2-piece {
 	background-image: url(/ags/images/check_p2.png);
 }
+
+.p1-piece-k {
+	background-image: url(/ags/images/check_p1_k.png);
+}
+
+.p2-piece-k {
+	background-image: url(/ags/images/check_p2_k.png);
+}

@@ -74,6 +74,19 @@ function gameParticipantString(game) {
 function GameInfo(parent, game) {
 	var _i = this;
 
+	function createButton(text, className, callback) {
+		var button = Awe.createElement('button', _i.content, {
+			className: "float-right btn " + className,
+			attrs: {
+				innerText: text
+			},
+			styles: {
+				margin: "18px 15px"
+			}
+		});
+		$(button).click(callback);
+	}
+
 	this.content = Awe.createElement('div', parent, {
 		className: "game-info",
 		styles: {
@@ -90,26 +103,21 @@ function GameInfo(parent, game) {
 	var buttonCallback;
 	if (game) {
 		if (gameHasPlayers(game)) {
-			buttonText = "Play";
-			buttonClass = "btn-success";
-			buttonCallback = function() {
+			createButton("Play", "btn-success", function() {
+				console.log("STARTING GAME ",game.gameState);
 				gContext.gameServer.smUI.requestState("PLAYING_GAME", game);
-			}
-		} else {
-			buttonText = "Delete";
-			buttonClass = "btn-danger";
-			buttonCallback = function() {
+			});
+		}
+
+		createButton("Delete", "btn-danger", function() {
 				gContext.socket.send(JSON.stringify({
 					type: "delete_game",
 					_id: game._id,
 					_rev: game._rev
 				}));
-			}
-		}
+		});
 	} else {
-		buttonText = "Start a new game";
-		buttonClass = "btn-primary";
-		buttonCallback = function() {
+		createButton("Start a new game", "btn-primary", function() {
 			// Create game
 			var type;
 			if (gParams.gameTypes.length > 1) {
@@ -126,20 +134,8 @@ function GameInfo(parent, game) {
 				userCount: def.maxPlayers,
 				requestUsers: []
 			}));
-		}
+		});
 	}
-
-	var button = Awe.createElement('button', this.content, {
-		className: "float-right btn " + buttonClass,
-		attrs: {
-			innerText: buttonText
-		},
-		styles: {
-			margin: "18px 15px"
-		}
-	});
-
-	$(button).click(buttonCallback);
 
 	if (game) {
 		Awe.createElement('div', this.content, {

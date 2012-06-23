@@ -346,6 +346,7 @@ var handlers = {
                                     success: true,
                                     _id: message._id
                                 });
+                                // TODO: Notify other clients
                             }
                         });
                     }

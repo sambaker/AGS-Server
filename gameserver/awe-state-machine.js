@@ -148,7 +148,7 @@
         nextState.runTime = 0;
         if(_i.tracing) _sm_trace_e(id);
         if (nextState.start) {
-          nextState.start.apply(nextState, [_i.currentState && _i.currentState.id].concat(Array.prototype.slice.call(arguments,1)));
+          nextState.start.apply(nextState, [_i.currentStateId].concat(Array.prototype.slice.call(arguments,1)));
         }
       }
       
