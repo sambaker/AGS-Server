@@ -61,7 +61,7 @@ CheckersGame.prototype.getWinner = function() {
 	for (var i = 1; i <= 2; ++i) {
 		if (this.gameState.pieceCounts[i] > 0) {
 			if (!winner) {
-				winner = this.sessionState.users[i];
+				winner = this.playerToUser[i];
 			} else {
 				won = false;
 			}
