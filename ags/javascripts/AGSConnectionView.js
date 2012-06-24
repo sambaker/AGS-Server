@@ -8,6 +8,21 @@ var gParams = {
 
 var gContext = {};
 
+var preloadImages = [
+	'/ags/images/vintage_red.png',
+	'/ags/images/vintage_black.png',
+	'/ags/images/vintage_red_king.png',
+	'/ags/images/vintage_black_king.png',
+	'/ags/images/board_white.png',
+	'/ags/images/board_black.png',
+];
+
+for (var i = 0; i < preloadImages.length; ++i) {
+	var image = new Image();
+	image.src = preloadImages[i];
+}
+image = null;
+
 function filterGameDefs(gameDefs, server) {
 	var requestedTypes = gParams.gameTypes || [gParams.gameType];
 	gParams.gameTypes = [];
@@ -34,6 +49,14 @@ function gamePlayable(game) {
 
 function gameWon(game) {
 	return game.won;
+}
+
+function getWinner(game) {
+	var winner = game.getWinner();
+	if (winner == gContext.username) {
+		return "You";
+	}
+	return winner;
 }
 
 function headerDescriptionString() {
@@ -159,7 +182,7 @@ function GameInfo(parent, game) {
 		var status = "";
 		if (gameWon(game)) {
 			var g = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
-			status = "<span style='font-weight: bold; color: #ffdd88;'>Game over</span> "+g.getWinner()+" won!";
+			status = "<span style='font-weight: bold; color: #ffdd88;'>Game over</span> "+getWinner(g)+" won!";
 		} else if (gamePlayable(game)) {
 			var g = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
 			var canPlay = g.allowTurn(gContext.username);
