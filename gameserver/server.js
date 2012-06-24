@@ -207,7 +207,11 @@ var handlers = {
         dbGames.get(message.game, function(err, doc) {
             if (!handleError(ws, err)) {
                 var game = new games[doc.type].game(doc, doc.gameState);
-                if (game.takeTurn(context.user, message.turn)) {
+                if (doc.playable && game.takeTurn(context.user, message.turn)) {
+                    if (game.getWinner()) {
+                        doc.won = true;
+                        doc.playable = false;
+                    }
                     var savedGameState = doc.gameState;
                     doc.gameState = game.gameState;
                     dbGames.save(doc._id, doc._rev, doc, function(err, res) {
@@ -297,28 +301,30 @@ var handlers = {
                             }
                             joinedExistingGame = true;
 
-                            // Send notifications to existing users that are connected
-                            for (var i = 0; i < doc.users.length - 1; ++i) {
-                                if (doc.users[i] != context.user) {
-                                    var uws = caus[doc.users[i]];
-                                    if (uws) {
-                                        wssend(uws, {
-                                            type: "games",
-                                            games: [doc]
-                                        });
-                                    }
-                                }
-                            }
-
                             dbGames.save(doc._id, doc._rev, doc, function(err, res) {
                                 if (handleError(ws, err)) {
                                     createNewGame();
                                 } else {
+                                    console.log("REV =",res);
+                                    doc._rev = res.rev;
                                     wssend(ws, {
                                         type: "join_game",
                                         success: true,
                                         game: doc
                                     });
+
+                                    // Send notifications to existing users that are connected
+                                    for (var i = 0; i < doc.users.length - 1; ++i) {
+                                        if (doc.users[i] != context.user) {
+                                            var uws = caus[doc.users[i]];
+                                            if (uws) {
+                                                wssend(uws, {
+                                                    type: "games",
+                                                    games: [doc]
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
                             });
                         }
@@ -347,6 +353,18 @@ var handlers = {
                                     _id: message._id
                                 });
                                 // TODO: Notify other clients
+                                for (var i = 0; i < doc.users.length; ++i) {
+                                    if (doc.users[i] != context.user) {
+                                        var uws = caus[doc.users[i]];
+                                        if (uws) {
+                                            wssend(uws, {
+                                                type: "delete_game",
+                                                success: true,
+                                                _id: message._id
+                                            });
+                                        }
+                                    }
+                                }
                             }
                         });
                     }

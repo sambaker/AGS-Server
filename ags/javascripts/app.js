@@ -31,7 +31,7 @@ function CheckersClient(parent) {
 			width: '700px',
 			height: '835px',
 			top: '10px',
-			left: '162px',
+			left: '145px',
 			backgroundColor: '#ffffff'
 		}
 	});
@@ -109,9 +109,6 @@ function CheckersClient(parent) {
 		[null, null, null, null, null, null, null, null],
 		[null, null, null, null, null, null, null, null]
 	];
-
-	var currentMove = null;
-	var currentPiece = null;
 
 	var boardMargins = { x: 8, y: 8 };
 	var boardSquareSize = 84;
@@ -245,19 +242,17 @@ function CheckersClient(parent) {
 					    		}
 					    		var moveState = _i.game.takeTurn(gGameview.whoAmI(),turn);
 					    		if (moveState) {// && !moveState.chainable) {
-						    		// TODO: Send move to server
 						    		gGameview.takeTurn(turn)
 
-						    		// TODO: Allow multiple turns
-						    		if (moveState.chainable) {
-						    			// TODO:
-						    			_i.smMove.requestOrRestartState('chooseTurn', piece.moveTo);
-						    		} else {
-						    			_i.smMove.requestState('opponentTurn');
-						    		}
+						    		if (!_i.game.sessionState.won) {
+							    		if (moveState.chainable) {
+							    			_i.smMove.requestOrRestartState('chooseTurn', piece.moveTo);
+							    		} else {
+							    			_i.smMove.requestState('opponentTurn');
+							    		}
+							    	}
 					    		} else if (moveState) {
 					    			// Keep moving
-						    		//currentPiece = piece.boardPos;
 					    			_i.smMove.restartCurrentState();
 					    		}
 					    	} else {
@@ -286,7 +281,6 @@ function CheckersClient(parent) {
 			start : function() {
 				status.innerText = "Waiting for " + _i.game.getNextPlayer();
 				status.style.color = "#3333cc";
-				currentMove = null;
 				updatePieces();
 			}
 		},
@@ -294,8 +288,21 @@ function CheckersClient(parent) {
 			start : function(fromState) {
 				status.innerText = "Your turn";
 				status.style.color = "#33cc33";
-				currentMove = [];
 				updatePieces(true, _i.game.gameState.chainFrom);
+			}
+		},
+		"gameOver" : {
+			start : function() {
+				console.log("X",status.innerHTML);
+				if (_i.game.getWinner() == gGameview.whoAmI()) {
+					status.innerText = "You won!";
+				} else {
+					status.innerText = "You lost!";
+				}
+				console.log("Y",status.innerHTML);
+				status.style.color = "#333333";
+				status.style.backgroundColor = "#ffff33";
+				updatePieces();
 			}
 		}
 	}, null);
@@ -313,7 +320,9 @@ function CheckersClient(parent) {
 			$close.click(_i.hide);
 		}
 
-		if (game.allowTurn(gGameview.whoAmI())) {
+		if (gameSession.won) {
+			_i.smMove.requestState("gameOver");
+		} else if (game.allowTurn(gGameview.whoAmI())) {
 			_i.smMove.requestOrRestartState("chooseTurn");
 		} else {
 			_i.smMove.requestOrRestartState("opponentTurn");

@@ -28,8 +28,12 @@ function filterGameDefs(gameDefs, server) {
 	}
 }
 
-function gameHasPlayers(game) {
+function gamePlayable(game) {
 	return game.playable;
+}
+
+function gameWon(game) {
+	return game.won;
 }
 
 function headerDescriptionString() {
@@ -51,7 +55,7 @@ function headerDescriptionString() {
 function gameParticipantString(game) {
 	// TODO: Handle games that are waiting for players properly
 	var count = game.users.length;
-	if (!gameHasPlayers(game)) {
+	if (!gameWon(game) && !gamePlayable(game)) {
 		return "Waiting for players...";
 	} else {
 		var done = 1;
@@ -102,7 +106,7 @@ function GameInfo(parent, game) {
 	var buttonClass;
 	var buttonCallback;
 	if (game) {
-		if (gameHasPlayers(game)) {
+		if (gamePlayable(game)) {
 			createButton("Play", "btn-success", function() {
 				console.log("STARTING GAME ",game.gameState);
 				gContext.gameServer.smUI.requestState("PLAYING_GAME", game);
@@ -140,7 +144,12 @@ function GameInfo(parent, game) {
 	if (game) {
 		Awe.createElement('div', this.content, {
 			attrs: {
-				innerText: gParams.gameDefs[game.type].displayName
+				innerHTML: 
+					'<strong>'+
+					gParams.gameDefs[game.type].displayName+
+					'</strong> <em>'+
+					gameParticipantString(game)+
+					'</em>'
 			},
 			styles: {
 				padding: "10px 10px 0px 10px",
@@ -148,12 +157,26 @@ function GameInfo(parent, game) {
 			}
 		});
 
-		Awe.createElement('div', this.content, {
+		var status = "";
+		if (gameWon(game)) {
+			var g = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
+			status = "<span style='font-weight: bold; color: #ffdd88;'>Game over</span> "+g.getWinner()+" won!";
+		} else if (gamePlayable(game)) {
+			var g = new gParams.gameClasses[game.type](game, game.gameState, gParams.debug);
+			var canPlay = g.allowTurn(gContext.username);
+			if (canPlay) {
+				status = "<span style='font-weight: bold; color: #77ee88;'>Ready to play</span>";
+			} else {
+				status = "<span style='font-weight: bold; color: #77eeff;'>Waiting for "+g.getNextPlayer()+"</span>";
+			}
+		}
+
+		var gameStatus = Awe.createElement('div', this.content, {
 			attrs: {
-				innerText: gameParticipantString(game)
+				innerHTML: status
 			},
 			styles: {
-				padding: "10px 10px 0px 10px",
+				padding: "8px 10px 0px 10px",
 				color: "#ffffff",
 			}
 		});
@@ -325,6 +348,22 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 			}
 		});
 
+		function updateGamesList() {
+			parent = _i.gamesList.get(0);
+			_i.gameInfoById = {};
+			if (gContext.games && gContext.games.length) {
+				parent.innerHTML = "";
+				for (var i = 0; i < gContext.games.length; ++i) {
+					var gi = new GameInfo(parent, gContext.games[i]);
+					_i.gameInfoById[gContext.games[i]._id] = gi;
+				}
+			} else {
+				parent.innerText = "No games";
+			}
+			// Add create game link
+			new GameInfo(parent);
+		}
+
 		_i.smUI = new Awe.StateMachine("UI", {
 			"NONE" : {
 				allowOnly: ["GETTING_GAMES"],
@@ -345,19 +384,7 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 			},
 			"SHOWING_GAMES" : {
 				start: function() {
-					parent = _i.gamesList.get(0);
-					_i.gameInfoById = {};
-					if (gContext.games && gContext.games.length) {
-						parent.innerHTML = "";
-						for (var i = 0; i < gContext.games.length; ++i) {
-							var gi = new GameInfo(parent, gContext.games[i]);
-							_i.gameInfoById[gContext.games[i]._id] = gi;
-						}
-					} else {
-						parent.innerText = "No games";
-					}
-					// Add create game link
-					new GameInfo(parent);
+					updateGamesList();
 				}
 			},
 			"PLAYING_GAME" : {
@@ -460,6 +487,13 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 				}
 				//_i.smConnection.requestState("DISCONNECTING");
 			},
+			take_turn : function(data) {
+				if (!data.success) {
+					console.log("DATA:",data);
+					alert("Bad news: the server rejected your turn. Please contact the developer for help");
+				}
+				updateGamesList();
+			},
 			games : function(data) {
 				// TODO:
 				console.log("GOT GAMES FROM SERVER: ", data);
@@ -487,6 +521,7 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 				if (_i.smUI.getCurrentStateId() == "SHOWING_GAMES") {
 					_i.smUI.restartCurrentState();
 				} else if (_i.smUI.getCurrentStateId() == "PLAYING_GAME") {
+					updateGamesList();
 					var currentGameId = gContext.currentGame.sessionState._id;
 					for (var i = 0; i < gContext.games.length; ++i) {
 						if (gContext.games[i]._id == currentGameId) {
@@ -571,6 +606,11 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 			game: gContext.currentGame.sessionState._id,
 			turn: turn
 		}));
+		if (gContext.currentGame.getWinner()) {
+			gContext.currentGame.sessionState.playable = false;
+			gContext.currentGame.sessionState.won = true;
+			_i.smUI.restartCurrentState(gContext.currentGame.sessionState);
+		}
 	}
 
 	_i.exitGame = function() {

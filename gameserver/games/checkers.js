@@ -55,6 +55,22 @@ CheckersGame.prototype.moveSquare = function(from, to) {
 	this.setSquare(to, p);
 }
 
+CheckersGame.prototype.getWinner = function() {
+	var won = true;
+	var winner = null;
+	for (var i = 1; i <= 2; ++i) {
+		if (this.gameState.pieceCounts[i] > 0) {
+			if (!winner) {
+				winner = this.sessionState.users[i];
+			} else {
+				won = false;
+			}
+		}
+	}
+	// If the game is won, return the winner
+	return won && winner;
+}
+
 CheckersGame.prototype.getSquare = function(pos) {
 	return this.gameState.board[pos.x + (pos.y << 3)] || { p:null, k:false };
 }
