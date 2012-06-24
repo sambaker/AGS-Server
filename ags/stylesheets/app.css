@@ -18,9 +18,9 @@
 	line-height: 28px;
 	padding: 0px 12px;
 	margin: 0px 15px;
-	/*border: 2px solid #44bb44;*/
 	background-color: #44bb44;
 	color: #ffffff;
+	border-radius: 4px;
 }
 
 .connectivity {
@@ -75,4 +75,12 @@
 
 .p2-piece-k {
 	background-image: url(/ags/images/check_p2_k.png);
+}
+
+.square-light {
+	background-image: url(/ags/images/square_light.png);
+}
+
+.square-dark {
+	background-image: url(/ags/images/square_dark.png);
 }

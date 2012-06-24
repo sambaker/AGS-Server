@@ -352,7 +352,7 @@ var handlers = {
                                     success: true,
                                     _id: message._id
                                 });
-                                // TODO: Notify other clients
+                                // Notify other clients
                                 for (var i = 0; i < doc.users.length; ++i) {
                                     if (doc.users[i] != context.user) {
                                         var uws = caus[doc.users[i]];

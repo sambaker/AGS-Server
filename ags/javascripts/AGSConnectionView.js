@@ -53,7 +53,6 @@ function headerDescriptionString() {
 }
 
 function gameParticipantString(game) {
-	// TODO: Handle games that are waiting for players properly
 	var count = game.users.length;
 	if (!gameWon(game) && !gamePlayable(game)) {
 		return "Waiting for players...";
@@ -495,7 +494,6 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 				updateGamesList();
 			},
 			games : function(data) {
-				// TODO:
 				console.log("GOT GAMES FROM SERVER: ", data);
 				if (gContext.games) {
 					for (var i = 0; i < data.games.length; ++i) {

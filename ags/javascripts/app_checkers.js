@@ -32,7 +32,9 @@ function CheckersClient(parent) {
 			height: '835px',
 			top: '10px',
 			left: '145px',
-			backgroundColor: '#ffffff'
+//			background: "#ffffff url(/ags/images/hemp.jpeg) repeat"
+			backgroundColor: '#eeeeee',
+			borderRadius: '8px'
 		}
 	});
 
@@ -50,6 +52,7 @@ function CheckersClient(parent) {
 			padding: "0px 20px",
 			textAlign: 'center',
 			lineHeight: '36px',
+			borderRadius: '8px',
 			cursor: 'pointer'
 		}
 	});
@@ -81,7 +84,7 @@ function CheckersClient(parent) {
 	var board = Awe.createElement('div', container, {
 		styles: {
 			position: 'relative',
-			backgroundColor: "#6d4705",
+			backgroundColor: "#222222",
 			width: '688px',
 			height: '688px',
 			margin: '0px 6px'
@@ -136,13 +139,14 @@ function CheckersClient(parent) {
 		for (var x = 0; x < 8; ++x) {
 			var p = getSquarePosition(x, y);
 			var square = Awe.createElement('div', board, {
+				className: ((x ^ y) & 1) ? 'square-light' : 'square-dark',
 				styles: {
 					position: 'absolute',
 					top: p.y+'px',
 					left: p.x+'px',
 					width: boardSquareSize+'px',
-					height: boardSquareSize+'px',
-					backgroundColor: ((x ^ y) & 1) ? '#000000' : '#ffffff'
+					height: boardSquareSize+'px'
+//					backgroundColor: ((x ^ y) & 1) ? '#000000' : '#ffffff'
 				}
 			});
 
