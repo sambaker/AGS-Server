@@ -134,6 +134,7 @@ function GameInfo(parent, game) {
 			if (gParams.gameTypes.length > 1) {
 				var select = document.getElementById("select-game-type");
 				type = select.value;
+				$.cookie("_gameType", type);
 			} else {
 				type = gParams.gameTypes[0];
 			}
@@ -191,7 +192,11 @@ function GameInfo(parent, game) {
 		var options = "";
 		for (var i = 0; i < gParams.gameTypes.length; ++i) {
 			var def = gParams.gameDefs[gParams.gameTypes[i]];
-			options += '<option value='+gParams.gameTypes[i]+'>' + def.displayName + '</option>';
+			if ($.cookie("_gameType") == gParams.gameTypes[i]) {
+				options += '<option selected="selected" value='+gParams.gameTypes[i]+'>' + def.displayName + '</option>';
+			} else {
+				options += '<option value='+gParams.gameTypes[i]+'>' + def.displayName + '</option>';
+			}
 		}
 		Awe.createElement('div', this.content, {
 			className: "control-group",
@@ -200,7 +205,7 @@ function GameInfo(parent, game) {
 				'<label class="control-label" for="select-game-type">Game type:</label>\
 				<div class="controls">\
 					<select id="select-game-type">' +
-						options +
+					options +
 					'</select>\
 				</div>'
 			}
@@ -358,14 +363,12 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 		function updateGamesList() {
 			parent = _i.gamesList.get(0);
 			_i.gameInfoById = {};
+			parent.innerHTML = "";
 			if (gContext.games && gContext.games.length) {
-				parent.innerHTML = "";
 				for (var i = 0; i < gContext.games.length; ++i) {
 					var gi = new GameInfo(parent, gContext.games[i]);
 					_i.gameInfoById[gContext.games[i]._id] = gi;
 				}
-			} else {
-				parent.innerText = "No games";
 			}
 			// Add create game link
 			new GameInfo(parent);
