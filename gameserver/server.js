@@ -2,8 +2,23 @@
 var Awe = require('./awe-core.js').Awe;
 Awe.StateMachine = require('./awe-state-machine.js').StateMachine;
 var server = require('http').createServer(httpHandler);
-var WebSocketServer = require('ws').Server;
-var wss = new WebSocketServer({server: server});
+//var WebSocketServer = require('ws').Server;
+var io = require('socket.io').listen(server);
+
+io.configure('production', function(){
+        io.enable('browser client minification');  // send minified client
+        io.enable('browser client etag');          // apply etag caching logic based on version number
+        io.enable('browser client gzip');          // gzip the file
+        io.set('log level', 1);                    // reduce logging
+        io.set('transports', [                     // enable all transports (optional if you want flashsocket)
+            'websocket'
+//          , 'flashsocket'
+          , 'htmlfile'
+          , 'xhr-polling'
+          , 'jsonp-polling'
+        ]);
+      });
+
 var cradle = require('cradle');
 var fs = require('fs');
 
@@ -109,13 +124,12 @@ function httpHandler(req, res) {
     }
 }
 
-function wssend(ws, o) {
-    ws.send(JSON.stringify(o));
+function wssend(ws, type, o) {
+    ws.emit(type, o);
 }
 
 function sendFailure(ws, type, err) {
-    wssend(ws, {
-        type: type || "error",
+    wssend(ws, type || "error", {
         success: false,
         error: {
             text: err
@@ -125,8 +139,7 @@ function sendFailure(ws, type, err) {
 
 function handleError(ws, err) {
     if (err) {
-        wssend(ws, {
-            type : "error",
+        wssend(ws, "error", {
             error: {
                 text: err.error + ": " + err.reason
             }
@@ -142,8 +155,7 @@ var handlers = {
             if (err) {
                 context.authenticated = false;
                 console.log("Failed auth", err);
-                wssend(ws, {
-                    type : "authenticate",
+                wssend(ws, "authenticate", {
                     error : {
                         text : "Invalid username"
                     }
@@ -152,16 +164,14 @@ var handlers = {
                 if (doc.password == message.password) {
                     context.authenticated = true;
                     context.user = message.name;
-                    wssend(ws, {
-                        type : "authenticate",
+                    wssend(ws, "authenticate", {
                         success : true
                     });
                     caus[context.user] = ws;
                 } else {
                     context.authenticated = false;
                     console.log("Failed auth: Wrong password");
-                    wssend(ws, {
-                        type : "authenticate",
+                    wssend(ws, "authenticate", {
                         error : {
                             text : "Invalid password"
                         }
@@ -178,8 +188,7 @@ var handlers = {
         }, function(err, res) {
             if (err) {
                 context.authenticated = false;
-                wssend(ws, {
-                    type : "signup",
+                wssend(ws, "signup", {
                     success : false,
                     error: {
                         text: err.error + ": " + err.reason
@@ -188,8 +197,7 @@ var handlers = {
             } else {
                 context.user = message.name;
                 context.authenticated = true;
-                wssend(ws, {
-                    type : "signup",
+                wssend(ws, "signup", {
                     success : true
                 });
             }
@@ -198,8 +206,7 @@ var handlers = {
     take_turn : function(ws, message, context) {
         // TODO: Cache connected games in memory
         function takeTurnFailed(revertTo) {
-            wssend(ws, {
-                type: 'take_turn',
+            wssend(ws, 'take_turn', {
                 success: false,
                 game: revertTo
             });
@@ -219,8 +226,7 @@ var handlers = {
                             doc.gameState = savedGameState;
                             takeTurnFailed(doc);
                         } else {
-                            wssend(ws, {
-                                type: "take_turn",
+                            wssend(ws, "take_turn", {
                                 success: true
                             });
 
@@ -228,9 +234,9 @@ var handlers = {
                             for (var i = 0; i < doc.users.length; ++i) {
                                 if (doc.users[i] != context.user) {
                                     var uws = caus[doc.users[i]];
+                                    console.log("Sending turn to user " + doc.users[i],uws != null);
                                     if (uws) {
-                                        wssend(uws, {
-                                            type: "games",
+                                        wssend(uws, "games", {
                                             games: [doc]
                                         });
                                     }
@@ -275,8 +281,7 @@ var handlers = {
                     if (!handleError(ws, err)) {
                         dbGames.get(res.id, function(err, doc) {
                             if (!handleError(ws, err)) {
-                                wssend(ws, {
-                                    type: "join_game",
+                                wssend(ws, "join_game", {
                                     success: true,
                                     game: doc
                                 });
@@ -305,10 +310,8 @@ var handlers = {
                                 if (handleError(ws, err)) {
                                     createNewGame();
                                 } else {
-                                    console.log("REV =",res);
                                     doc._rev = res.rev;
-                                    wssend(ws, {
-                                        type: "join_game",
+                                    wssend(ws, "join_game", {
                                         success: true,
                                         game: doc
                                     });
@@ -318,8 +321,7 @@ var handlers = {
                                         if (doc.users[i] != context.user) {
                                             var uws = caus[doc.users[i]];
                                             if (uws) {
-                                                wssend(uws, {
-                                                    type: "games",
+                                                wssend(uws, "games", {
                                                     games: [doc]
                                                 });
                                             }
@@ -347,8 +349,7 @@ var handlers = {
                         dbGames.remove(message._id, message._rev, function(err, o) {
                             if (!handleError(ws, err)) {
                                 success = true;
-                                wssend(ws, {
-                                    type: "delete_game",
+                                wssend(ws, "delete_game", {
                                     success: true,
                                     _id: message._id
                                 });
@@ -357,8 +358,7 @@ var handlers = {
                                     if (doc.users[i] != context.user) {
                                         var uws = caus[doc.users[i]];
                                         if (uws) {
-                                            wssend(uws, {
-                                                type: "delete_game",
+                                            wssend(uws, "delete_game", {
                                                 success: true,
                                                 _id: message._id
                                             });
@@ -392,8 +392,7 @@ var handlers = {
                 docs.forEach(function(doc) {
                     games.push(doc);
                 });
-                wssend(ws, {
-                    type : "games",
+                wssend(ws, "games", {
                     games : games
                 });
             }
@@ -405,8 +404,8 @@ var handlers = {
     }
 }
 
-wss.on('connection', function(ws) {
-    // var game = new Game(Game.createGameState());
+io.sockets.on('connection', function(ws) {
+    console.log("Have connection",ws);
     var context = {};
 
     var states = {
@@ -417,28 +416,24 @@ wss.on('connection', function(ws) {
     var sm = new Awe.StateMachine("Connection", states, "CONNECTED");
     sm.tracing = true;
 
-    ws.on('message', function(message) {
-        var o = JSON.parse(message);
-        if (handlers.hasOwnProperty(o.type)) {
-            if (o.type == "authenticate" || o.type == "signup" || context.authenticated) {
-                console.log("Handling message: ", o);
-                handlers[o.type](ws, o, context);
-            } else {
-                wssend(ws, {
-                    type : "noauth",
-                    error : {
-                        text : "Received " + o.type + " message without authenticated session"
-                    }
-                });
-            }
-        } else {
-            console.log("Unrecognized message type: ", o);
-            ws.send(JSON.stringify({
-                error: "Unrecognized message type " + o.type
-            }));
+    function initHandler(ws, key) {
+        if (handlers.hasOwnProperty(key)) {
+            ws.on(key, function(data) {
+                if (key == "authenticate" || key == "signup" || context.authenticated) {
+                    console.log("Handling message: ", data);
+                    handlers[key](ws, data, context);
+                } else {
+                    sendFailure(ws, "noauth", "Received " + key + " message without authenticated session");
+                }
+            });
         }
-    });
-    ws.on('close', function() {
+    }
+
+    for (key in handlers) {
+        initHandler(ws, key);
+    }
+
+    ws.on('disconnect', function() {
         console.log('Socket disconnected');
         if (context.user && caus[context.user]) {
             delete caus[context.user];

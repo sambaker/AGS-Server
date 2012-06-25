@@ -400,10 +400,6 @@ function startup() {
 		chess: new GameClient(root, "chess")
 	}
 
-	var gameServer = 'localhost:8000';
-	if (document.location.href.indexOf('client.artefactgroup') >= 0) {
-		gameServer = 'dev.artefactgroup.com:8000';
-	}
 	gGameview = new ArtefactGameServerConnectionView(gameServer,
 		["checkers", "chess"],
 		clients,

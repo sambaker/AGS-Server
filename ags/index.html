@@ -5,6 +5,13 @@
 	<title>Game</title>
 	<link href="bootstrap/css/bootstrap.css" media="all" rel="stylesheet" type="text/css" />
 	<link href="stylesheets/app.css" media="all" rel="stylesheet" type="text/css" />
+	<script type="text/javascript">
+	var gameServer = 'localhost:8000';
+	if (document.location.href.indexOf('client.artefactgroup') >= 0) {
+		gameServer = 'dev.artefactgroup.com:8000';
+	}
+	</script>
+	<script type="text/javascript" src="http://dev.artefactgroup.com:8000/socket.io/socket.io.js"></script>
 	<script type="text/javascript" src="javascripts/jquery-1.7.2.min.js"></script>
 	<script type="text/javascript" src="javascripts/jquery.cookie.js"></script>
 	<script type="text/javascript" src="bootstrap/js/bootstrap.js"></script>

@@ -121,11 +121,10 @@ function GameInfo(parent, game) {
 		}
 
 		createButton("Delete", "btn-danger", function() {
-				gContext.socket.send(JSON.stringify({
-					type: "delete_game",
+				gContext.socket.emit("delete_game", {
 					_id: game._id,
 					_rev: game._rev
-				}));
+				});
 		});
 	} else {
 		createButton("Start a new game", "btn-primary", function() {
@@ -140,12 +139,11 @@ function GameInfo(parent, game) {
 			}
 			var def = gParams.gameDefs[type];
 			// TODO: Process more options, min/max player, opponent, etc
-			gContext.socket.send(JSON.stringify({
-				type: "join_game",
+			gContext.socket.emit("join_game", {
 				gameType: type,
 				userCount: def.maxPlayers,
 				requestUsers: []
-			}));
+			});
 		});
 	}
 
@@ -385,11 +383,10 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 				allowOnly: ["NONE", "SHOWING_GAMES"],
 				start: function() {
 					_i.gamesList.text('Loading games...');
-					gContext.socket.send(JSON.stringify({
-						type: "get_games",
+					gContext.socket.emit("get_games", {
 						gameTypes: gParams.gameTypes,
 						gameType: gParams.gameType
-					}));
+					});
 				}
 			},
 			"SHOWING_GAMES" : {
@@ -411,11 +408,10 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 			"NONE" : {},
 			"AUTHENTICATING" : {
 				start: function() {
-					gContext.socket.send(JSON.stringify({
-						type: "authenticate",
+					gContext.socket.emit("authenticate", {
 						name: gContext.username,
 						password: gContext.password
-					}));
+					});
 				}
 			},
 			"AUTHENTICATED" : {
@@ -429,11 +425,10 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 			},
 			"CREATE_ACCOUNT" : {
 				start: function() {
-					gContext.socket.send(JSON.stringify({
-						type: "signup",
+					gContext.socket.emit("signup", {
 						name: gContext.username,
 						password: gContext.password
-					}));
+					});
 				}
 			}
 		}, "NONE");
@@ -465,7 +460,12 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 			},
 			"DISCONNECTING" : {
 				start: function() {
-					gContext.socket.close();
+					gContext.socket.disconnect();
+					gContext.socket.removeAllListeners();
+					delete gContext.socket;
+					setTimeout(function() {
+						_i.smConnection.requestState("DISCONNECTED");
+					});
 				},
 				doNotAllow: ["CONNECTING"]
 			}
@@ -570,27 +570,24 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 		}
 
 		function openConnection() {
-			gContext.socket = new (window.MozWebSocket || WebSocket)(webSocketServer);
+			gContext.socket = io.connect('http://'+gameServer,{'force new connection':true});
 
-			gContext.socket.onopen = function(event) {
-				console.log("Server connection open", event);
+			gContext.socket.on("connect", function() {
+				console.log("Server connection open");
 				_i.smConnection.requestState("CONNECTED");
-			}
+			});
 
-			gContext.socket.onclose = function(event) {
+			gContext.socket.on("disconnect", function(event) {
 				_i.smConnection.requestState("DISCONNECTED");
-			}
+			});
 
-			gContext.socket.onmessage = function(event) {
-				var data = JSON.parse(event.data);
-				if (data.type && handlers[data.type]) {
-					handlers[data.type](data);
-				} else if (data.error) {
-					processServerError(data);
-				} else {
-					console.log("ERROR: Unrecognized response", data);
+			for (var key in handlers) {
+				if (handlers.hasOwnProperty(key)) {
+					gContext.socket.on(key, handlers[key]);
 				}
 			}
+
+			gContext.socket.on("error", processServerError);
 		}
 
 		if (haveCredentials()) {
@@ -610,11 +607,10 @@ function ArtefactGameServerConnectionView(server, gameTypes, clients, debug) {
 	}
 
 	_i.takeTurn = function(turn) {
-		gContext.socket.send(JSON.stringify({
-			type: "take_turn",
+		gContext.socket.emit("take_turn", {
 			game: gContext.currentGame.sessionState._id,
 			turn: turn
-		}));
+		});
 		if (gContext.currentGame.getWinner()) {
 			gContext.currentGame.sessionState.playable = false;
 			gContext.currentGame.sessionState.won = true;

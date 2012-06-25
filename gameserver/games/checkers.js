@@ -197,7 +197,6 @@ CheckersGame.prototype.takeTurn = function(user, turn, validateOnly) {
 		}
 	}
 
-	console.log("F3");
 	return false;
 }
 
