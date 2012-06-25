@@ -1,6 +1,35 @@
 var gGameview;
 
-function CheckersClient(parent) {
+var preloadImages = [
+	'/ags/images/vintage_red.png',
+	'/ags/images/vintage_black.png',
+	'/ags/images/vintage_red_king.png',
+	'/ags/images/vintage_black_king.png',
+	'/ags/images/board_white.png',
+	'/ags/images/board_black.png',
+	'/ags/images/bishop.png',
+	'/ags/images/king2.png',
+	'/ags/images/knight2.png',
+	'/ags/images/pawn2.png',
+	'/ags/images/queen2.png',
+	'/ags/images/rook2.png',
+	'/ags/images/bishop2.png',
+	'/ags/images/king2.png',
+	'/ags/images/knight2.png',
+	'/ags/images/pawn2.png',
+	'/ags/images/queen2.png',
+	'/ags/images/rook2.png',
+	'/ags/images/chess_light.jpg',
+	'/ags/images/chess_dark.jpg'
+];
+
+for (var i = 0; i < preloadImages.length; ++i) {
+	var image = new Image();
+	image.src = preloadImages[i];
+}
+image = null;
+
+function GameClient(parent, gameType) {
 	var _i = this;
 
 	_i.content = Awe.createElement('div', null, {
@@ -135,6 +164,15 @@ function CheckersClient(parent) {
 		return { x: boardMargins.x + boardSquareSize * x, y: boardMargins.y + boardSquareSize * y };
 	}
 
+	function getSquareImage(x, y) {
+		var light = ((x ^ y) & 1);
+		if (gameType == 'checkers') {
+			return light ? '/ags/images/board_white.png' : '/ags/images/board_black.png';
+		} else {
+			return light ? '/ags/images/chess_light.jpg' : '/ags/images/chess_dark.jpg';
+		}
+	}
+
 	for (var y = 0; y < 8; ++y) {
 		for (var x = 0; x < 8; ++x) {
 			var p = getSquarePosition(x, y);
@@ -145,7 +183,8 @@ function CheckersClient(parent) {
 					top: p.y+'px',
 					left: p.x+'px',
 					width: boardSquareSize+'px',
-					height: boardSquareSize+'px'
+					height: boardSquareSize+'px',
+					backgroundImage: 'url('+getSquareImage(x,y)+')'
 //					backgroundColor: ((x ^ y) & 1) ? '#000000' : '#ffffff'
 				}
 			});
@@ -165,6 +204,24 @@ function CheckersClient(parent) {
 		}
 	});
 
+	function getPieceImage(p) {
+		if (gameType == 'checkers') {
+			if (p.k) {
+				return p.p == 1 ? '/ags/images/vintage_red_king.png' : '/ags/images/vintage_black_king.png';
+			} else {
+				return p.p == 1 ? '/ags/images/vintage_red.png' : '/ags/images/vintage_black.png';
+			}
+		} else {
+			var url = '/ags/images/'+p.t;
+			if (p.p == 2) {
+				url += '2.png';
+			} else {
+				url += '.png';
+			}
+			return url;
+		}
+	}
+
 	function updatePiece(x, y, listen, onlyPiece) {
 		if (boardPieces[x][y]) {
 			board.removeChild(boardPieces[x][y]);
@@ -173,18 +230,14 @@ function CheckersClient(parent) {
 		var current = _i.game.getSquare({x:x,y:y});
 		if (current.p) {
 			var p = getSquarePosition(x, y);
-			var pc = current.p == 1 ? 'p1-piece' : 'p2-piece';
-			if (current.k) {
-				pc += "-k";
-			}
 			var piece = Awe.createElement('div', board, {
-				className: pc,
 				styles: {
 					position: 'absolute',
 					top: p.y+'px',
 					left: p.x+'px',
 					width: boardSquareSize+'px',
-					height: boardSquareSize+'px'
+					height: boardSquareSize+'px',
+					backgroundImage: 'url('+getPieceImage(current)+')'
 				}
 			});
 			piece.boardPos = { x: x, y: y };
@@ -343,7 +396,8 @@ function startup() {
 	var root = document.getElementById('root');
 
 	var clients = {
-		checkers: new CheckersClient(root)
+		checkers: new GameClient(root, "checkers"),
+		chess: new GameClient(root, "chess")
 	}
 
 	var gameServer = 'localhost:8000';
@@ -351,7 +405,7 @@ function startup() {
 		gameServer = 'dev.artefactgroup.com:8000';
 	}
 	gGameview = new ArtefactGameServerConnectionView(gameServer,
-		["checkers"],
+		["checkers", "chess"],
 		clients,
 		true);
 }

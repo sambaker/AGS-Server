@@ -8,21 +8,6 @@ var gParams = {
 
 var gContext = {};
 
-var preloadImages = [
-	'/ags/images/vintage_red.png',
-	'/ags/images/vintage_black.png',
-	'/ags/images/vintage_red_king.png',
-	'/ags/images/vintage_black_king.png',
-	'/ags/images/board_white.png',
-	'/ags/images/board_black.png',
-];
-
-for (var i = 0; i < preloadImages.length; ++i) {
-	var image = new Image();
-	image.src = preloadImages[i];
-}
-image = null;
-
 function filterGameDefs(gameDefs, server) {
 	var requestedTypes = gParams.gameTypes || [gParams.gameType];
 	gParams.gameTypes = [];
