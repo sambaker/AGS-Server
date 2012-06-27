@@ -1,4 +1,5 @@
 
+var config = require('./server-config.js').Config;
 var Awe = require('./awe-core.js').Awe;
 Awe.StateMachine = require('./awe-state-machine.js').StateMachine;
 var server = require('http').createServer(httpHandler);
@@ -82,13 +83,13 @@ function loadGames() {
 
 loadGames();
 
-var cradleConnection = new(cradle.Connection)('https://sam-baker.cloudant.com', 443, {
-    auth: { username: 'sam-baker', password: 'xxxxxx' }
+var cradleConnection = new(cradle.Connection)(config.dbURL, config.dbPort, {
+    auth: { username: config.dbUser, password: config.dbPassword }
 });
 var dbUser = cradleConnection.database('users');
 var dbGames = cradleConnection.database('games');
 
-server.listen(8000);
+server.listen(config.serverPort);
 
 function httpHandler(req, res) {
     var response = null;
@@ -294,6 +295,10 @@ var handlers = {
                     if (!handleError(ws, err)) {
                         dbGames.get(res.id, function(err, doc) {
                             if (!handleError(ws, err)) {
+                                // if (game.playable && def.realtimeOnly) {
+                                //     cags[doc.id] = ;
+                                // }
+
                                 wssend(ws, "join_game", {
                                     success: true,
                                     game: doc
