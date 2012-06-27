@@ -1,26 +1,6 @@
-var gGameview;
 
 var preloadImages = [
-	'/ags/images/vintage_red.png',
-	'/ags/images/vintage_black.png',
-	'/ags/images/vintage_red_king.png',
-	'/ags/images/vintage_black_king.png',
-	'/ags/images/board_white.png',
-	'/ags/images/board_black.png',
-	'/ags/images/bishop.png',
-	'/ags/images/king2.png',
-	'/ags/images/knight2.png',
-	'/ags/images/pawn2.png',
-	'/ags/images/queen2.png',
-	'/ags/images/rook2.png',
-	'/ags/images/bishop2.png',
-	'/ags/images/king2.png',
-	'/ags/images/knight2.png',
-	'/ags/images/pawn2.png',
-	'/ags/images/queen2.png',
-	'/ags/images/rook2.png',
-	'/ags/images/chess_light.jpg',
-	'/ags/images/chess_dark.jpg'
+	'/ags/images/pattern.png'
 ];
 
 for (var i = 0; i < preloadImages.length; ++i) {
@@ -29,7 +9,7 @@ for (var i = 0; i < preloadImages.length; ++i) {
 }
 image = null;
 
-function GameClient(parent, gameType) {
+function GameClientMatch(parent, gameType) {
 	var _i = this;
 
 	_i.content = Awe.createElement('div', null, {
@@ -390,18 +370,4 @@ function GameClient(parent, gameType) {
 		gGameview.exitGame();
 		parent.removeChild(_i.content);
 	}
-}
-
-function startup() {
-	var root = document.getElementById('root');
-
-	var clients = {
-		checkers: new GameClient(root, "checkers"),
-		chess: new GameClient(root, "chess")
-	}
-
-	gGameview = new ArtefactGameServerConnectionView(gameServer,
-		["checkers", "chess"],
-		clients,
-		true);
 }

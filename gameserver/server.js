@@ -101,7 +101,7 @@ function httpHandler(req, res) {
         response = JSON.stringify(gameDefs);
     } else if (req.url.indexOf(gameJSUrl) == 0) {
         var start = gameJSUrl.length;
-        var gameName = req.url.slice(start, startParams);
+        var gameName = req.url.slice(start, startParams >= 0 ? startParams : undefined);
         if (games[gameName]) {
             // Serve file
             response = games[gameName].source;
