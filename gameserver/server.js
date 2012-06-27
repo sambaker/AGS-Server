@@ -27,6 +27,7 @@ var gameDefs = {};
 
 // Map Connected Authenticated Users to web sockets
 var caus = {};
+var causReplaced = {};
 
 function dateToObject(date) {
     return [date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds()];
@@ -94,17 +95,25 @@ function httpHandler(req, res) {
     var callback = null;
     var gameJSUrl = '/api/games/';
     var startParams = req.url.indexOf('?');
+    callback = Awe.getQueryParam('callback',req.url);
     if (req.url.indexOf('/api/game-types') == 0) {
-        callback = Awe.getQueryParam('callback',req.url);
         response = JSON.stringify(gameDefs);
     } else if (req.url.indexOf(gameJSUrl) == 0) {
-        callback = Awe.getQueryParam('callback',req.url);
         var start = gameJSUrl.length;
         var gameName = req.url.slice(start, startParams);
         if (games[gameName]) {
             // Serve file
             response = games[gameName].source;
         }
+    } else if (req.url.indexOf('/api/stats/connections') == 0) {
+        var response = { count: 0, connectionsReplaced: causReplaced, users: [] };
+        for (var key in caus) {
+            if (caus.hasOwnProperty(key)) {
+                ++response.count;
+                response.users.push(key);
+            }
+        }
+        response = JSON.stringify(response);
     }
 
     if (response) {
@@ -167,6 +176,10 @@ var handlers = {
                     wssend(ws, "authenticate", {
                         success : true
                     });
+                    if (caus[context.user]) {
+                        causReplaced[context.user] = (causReplaced[context.user] || 0) + 1;
+                        caus[context.user].disconnect();
+                    }
                     caus[context.user] = ws;
                 } else {
                     context.authenticated = false;
