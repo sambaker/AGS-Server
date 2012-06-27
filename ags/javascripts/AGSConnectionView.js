@@ -2,7 +2,6 @@
 
 var gParams = {
 	debug: true,
-	gameTypes : ["checkers","rush_hour"]
 	//gameType: "checkers"
 }
 
