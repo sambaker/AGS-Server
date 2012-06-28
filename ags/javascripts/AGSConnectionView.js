@@ -97,20 +97,25 @@ function GameInfo(parent, game) {
 		$(button).click(callback);
 	}
 
-	this.content = Awe.createElement('div', parent, {
+	_i.content = Awe.createElement('div', parent, {
 		className: "game-info",
 		styles: {
 			width: "560px",
-			height: "64px",
+			minHeight: "55px",
+			paddingBottom: "10px",
 			backgroundColor: "#444444",
 			borderRadius: "12px",
 			margin: "10px"
 		}
 	});
 
-	var buttonText;
-	var buttonClass;
-	var buttonCallback;
+	function getSelectedGameType() {
+		if (gParams.gameTypes.length > 1) {
+			return _i.gameSelect.value;
+		}
+		return gParams.gameTypes[0];
+	}
+
 	if (game) {
 		if (gamePlayable(game)) {
 			createButton("Play", "btn-success", function() {
@@ -128,14 +133,8 @@ function GameInfo(parent, game) {
 	} else {
 		createButton("Start a new game", "btn-primary", function() {
 			// Create game
-			var type;
-			if (gParams.gameTypes.length > 1) {
-				var select = document.getElementById("select-game-type");
-				type = select.value;
-				$.cookie("_gameType", type);
-			} else {
-				type = gParams.gameTypes[0];
-			}
+			var type = getSelectedGameType();
+			$.cookie("_gameType", type);
 			var def = gParams.gameDefs[type];
 			// TODO: Process more options, min/max player, opponent, etc
 			gContext.socket.emit("join_game", {
@@ -147,7 +146,7 @@ function GameInfo(parent, game) {
 	}
 
 	if (game) {
-		Awe.createElement('div', this.content, {
+		Awe.createElement('div', _i.content, {
 			attrs: {
 				innerHTML: 
 					'<strong>'+
@@ -176,7 +175,7 @@ function GameInfo(parent, game) {
 			}
 		}
 
-		var gameStatus = Awe.createElement('div', this.content, {
+		var gameStatus = Awe.createElement('div', _i.content, {
 			attrs: {
 				innerHTML: status
 			},
@@ -185,28 +184,61 @@ function GameInfo(parent, game) {
 				color: "#ffffff",
 			}
 		});
-	} else if (gParams.gameTypes && gParams.gameTypes.length > 1) {
-		var options = "";
-		for (var i = 0; i < gParams.gameTypes.length; ++i) {
-			var def = gParams.gameDefs[gParams.gameTypes[i]];
-			if ($.cookie("_gameType") == gParams.gameTypes[i]) {
-				options += '<option selected="selected" value='+gParams.gameTypes[i]+'>' + def.displayName + '</option>';
-			} else {
-				options += '<option value='+gParams.gameTypes[i]+'>' + def.displayName + '</option>';
+	} else {
+		if (gParams.gameTypes && gParams.gameTypes.length > 1) {
+			// User can select their game type
+			var options = {};
+			for (var i = 0; i < gParams.gameTypes.length; ++i) {
+				var def = gParams.gameDefs[gParams.gameTypes[i]];
+				options[gParams.gameTypes[i]] = {
+					selected: $.cookie("_gameType") == gParams.gameTypes[i],
+					text: def.displayName
+				}
 			}
+			createSelect(_i.content, "select-game-type", "Game type:", options, function() {
+				var type = getSelectedGameType();
+				$.cookie("_gameType", type);
+				updateGameTypeInfo(type);
+			});
+			_i.gameSelect = document.getElementById("select-game-type");
 		}
-		Awe.createElement('div', this.content, {
-			className: "control-group",
-			attrs: {
-				innerHTML:
-				'<label class="control-label" for="select-game-type">Game type:</label>\
-				<div class="controls">\
-					<select id="select-game-type">' +
-					options +
-					'</select>\
-				</div>'
+
+		_i.gameTypeInfo = Awe.createElement('div', _i.content, {
+			styles: {
+				padding: "0px 10px",
 			}
 		});
+
+		updateGameTypeInfo();
+	}
+
+	function updateGameTypeInfo(type) {
+		if (_i.gameTypeInfo) {
+			_i.gameTypeInfo.innerHTML = "";
+
+			type = type || getSelectedGameType();
+			var def = gParams.gameDefs[type];
+
+			Awe.createElement('div', _i.gameTypeInfo, {
+				attrs: {
+					innerHTML: def.description
+				},
+				styles: {
+					padding: "0px 10px",
+				}
+			});
+
+			if (def.maxPlayers > def.minPlayers) {
+				var options = {};
+				for (var i = def.minPlayers; i <= def.maxPlayers; ++i) {
+					options[i] = {
+						selected: i == def.minPlayers,
+						text: i
+					};
+				}
+				createSelect(_i.gameTypeInfo, "select-player-count", "# of players:", options);
+			}
+		}
 	}
 }
 
