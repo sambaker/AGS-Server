@@ -1,6 +1,38 @@
 Artefact Game Server
 --------------------
 
+AGS is a multiplayer client/server platform. It includes a node.js server that provides
+
+- basic user account creation and authentication
+- game creation and player matchmaking
+- server side move validation using javascript game logic functions
+- couchdb game persistence to be crash-tolerant
+- uses socket.io connections for presence-aware connectivity
+- turn-based game client support
+- real-time game client support
+- games are added via game definition plugins with a currently undocumented interface - although multiple sample clients are included, it's not too hard to figure out what's required
+
+There is also a early web client freamwork that includes
+
+- An interface for handling all server communication, account creation, login, matchmaking, instancing games and hooks to custom game clients
+- A client interface for rendering the games
+
+Project status
+--------------
+
+The following features are in progress:
+
+- Presence awareness on the client isn't finished yet
+- A realtime match game is being added to test/demonstrate support for real-time games
+- Interface for choosing the number of players and picking specific opponents is not yet working but is in progress
+
+Not yet supported
+-----------------
+
+- Encrypted passwords! Currently user passwords are stored in the database and in client cookies as plain text
+- A well designed game interface. Chess and Checkers are intended as demo games only and will not have their dubious interfaces refined.
+- Scalability: currently the app supports only 1 server
+
 Local installation
 ------------------
 
