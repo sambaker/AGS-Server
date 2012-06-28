@@ -20,15 +20,15 @@ npm install socket.io cradle node-inspector
 
 Here's an example version of settings in server-config.js for a cloudant database:
 
-global.Config = {
-	// Port that node server will run on
-	serverPort: 8000,
-	dbURL: "https://sam-baker.cloudant.com",
-	// Couch database port
-	dbPort: 443,
-	dbUser: "sam-baker",
-	dbPassword: "your-password-here"
-}
+	global.Config = {
+		// Port that node server will run on
+		serverPort: 8000,
+		dbURL: "https://sam-baker.cloudant.com",
+		// Couch database port
+		dbPort: 443,
+		dbUser: "sam-baker",
+		dbPassword: "your-password-here"
+	}
 
 - To run the node server locally, I use the run.sh script in the root folder. This does a few things:
 
@@ -47,42 +47,16 @@ I ftp the gameserver folder to a different Ubuntu server which has node and the 
 
 To run the server as a daemon, I created a file:
 
-/etc/init/node-game.conf
+	/etc/init/node-game.conf
 
-Containing this script:
+Which is included in this repo but needs to be moved to /etc/init to work.
 
-description "node.js game server"
-author      "Sam Baker"
-
-# used to be: start on startup
-# until we found some mounts weren't ready yet while booting:
-start on started mountall
-stop on shutdown
-
-# Automatically Respawn:
-respawn
-respawn limit 99 5
-
-script
-    # Not sure why $HOME is needed, but we found that it is:
-    export HOME="/root"
-    export NODE_ENV="production"
-
-    cd /var/wss
-    exec /usr/local/bin/node gameserver/server.js >> /var/log/node.log 2>&1
-end script
-
-post-start script
-   # Optionally put a script here that will notifiy you node has (re)started
-   # /root/bin/hoptoad.sh "node.js has started!"
-end script
-
-This will start the node server when the server boots.
+This will start the node server when the Ubuntu server boots.
 
 When I make updates to the server, I ssh to the Ubuntu box and run:
 
-stop node-game
-start node-game
+	stop node-game
+	start node-game
 
 To restart the node server with the latest changes.
 
@@ -91,8 +65,8 @@ Adding a game on the server
 
 Game logic and game state are written in javascript. To make a game available to the server, create two javascript files in the gameserver/games folder:
 
-game-name.def.js
-game-name.js
+	game-name.def.js
+	game-name.js
 
 game-name.def.js file is a data structure that describes the game (min/max players, realtime/turn-based, display name). See the included games for examples.
 
@@ -100,11 +74,11 @@ game-name.js defines a game object and must assign it to global.Game. This objec
 
 After adding a game, restart the node server. If the server is running locally on port 8000, you can visit this URL in your browser:
 
-http://localhost:8000/api/game-types
+	http://localhost:8000/api/game-types
 
 and you should see your new game returned in the list. You should also see the game logic javascript file returned at:
 
-http://localhost:8000/api/games/game-name
+	http://localhost:8000/api/games/game-name
 
 Adding a game on the client
 ---------------------------
@@ -117,19 +91,19 @@ index.html - the html template for the webapp
 javascripts/AGSConnectionView.js - the javascript view that handles account/creation and login, creating and displaying games and starting a multiplayer game
 javascripts/app_checkers.js - this is the bit you need to rewrite for a new game client. It needs to provide a global function that's called on the webpages onload event:
 
-function startup() {
-	var root = document.getElementById('root');
+	function startup() {
+		var root = document.getElementById('root');
 
-	var clients = {
-		checkers: new GameClient(root, "checkers"),
-		chess: new GameClient(root, "chess")
+		var clients = {
+			checkers: new GameClient(root, "checkers"),
+			chess: new GameClient(root, "chess")
+		}
+
+		gGameview = new ArtefactGameServerConnectionView(gameServer,
+			["checkers", "chess"],
+			clients,
+			true);
 	}
-
-	gGameview = new ArtefactGameServerConnectionView(gameServer,
-		["checkers", "chess"],
-		clients,
-		true);
-}
 
 First it initializes some clients for each supported game type - in the above example chess and checkers.
 
@@ -140,3 +114,9 @@ It passes that to an instance of ArtefactGameServerConnectionView which takes pa
 - a debug flag, which is propagated to the game clients. For example my checkers.js game dumps the board state to the console via console.log() after each move.
 
 The GameClient class is also included in app_checkers.js and it is responsible for the interaction and rendering of the game. It must include a method show(gameSession, game) which takes the current game session from the server and an instance of the current game class (e.g. CheckersGame in checkers.js). show is called when the user chooses to play the game and also after a move is received from the server and the client needs to update the current state.
+
+How to edit
+-----------
+
+If you're not already using Sublime Text to edit your code, download it here http://www.sublimetext.com/
+
