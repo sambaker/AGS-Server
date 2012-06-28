@@ -120,3 +120,13 @@ How to edit
 
 If you're not already using Sublime Text to edit your code, download it here http://www.sublimetext.com/
 
+Image credits
+-------------
+
+The chess game uses chess board squares from here:
+
+http://www.chesssets.com/chess-boards/wood-boards/championsycamorewalnutchessboard.cfm
+
+And chess pieces from A Kadir Bener on deviantArt:
+
+http://abener.deviantart.com/#/d2n6kcb
