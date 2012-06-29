@@ -5,6 +5,8 @@ Awe.StateMachine = require('./awe-state-machine.js').StateMachine;
 var server = require('http').createServer(httpHandler);
 //var WebSocketServer = require('ws').Server;
 var io = require('socket.io').listen(server);
+var userViews = require('./views/users.js').Views;
+var gameViews = require('./views/games.js').Views;
 
 io.configure('production', function(){
         io.enable('browser client minification');  // send minified client
@@ -82,14 +84,6 @@ function loadGames() {
 }
 
 loadGames();
-
-var cradleConnection = new(cradle.Connection)(config.dbURL, config.dbPort, {
-    auth: { username: config.dbUser, password: config.dbPassword }
-});
-var dbUser = cradleConnection.database('users');
-var dbGames = cradleConnection.database('games');
-
-server.listen(config.serverPort);
 
 function httpHandler(req, res) {
     var response = null;
@@ -248,7 +242,6 @@ var handlers = {
                             for (var i = 0; i < doc.users.length; ++i) {
                                 if (doc.users[i] != context.user) {
                                     var uws = caus[doc.users[i]];
-                                    console.log("Sending turn to user " + doc.users[i],uws != null);
                                     if (uws) {
                                         wssend(uws, "games", {
                                             games: [doc]
@@ -289,7 +282,7 @@ var handlers = {
             // Create a function that will be used on failure to find new games
             function createNewGame() {
                 // Create a new game
-                var userCount = Math.max(message.userCount, def.minPlayers);
+                var userCount = playerMin;
                 var game = {
                     type: message.gameType,
                     requestUsers: message.requestUsers || [],
@@ -430,44 +423,179 @@ var handlers = {
     }
 }
 
-io.sockets.on('connection', function(ws) {
-    console.log("Have connection",ws);
-    var context = {};
+function startServer() {
+    io.sockets.on('connection', function(ws) {
+        var context = {};
 
-    var states = {
-        "CONNECTED" : {},
-        "IDLE" : {}
+        var states = {
+            "CONNECTED" : {},
+            "IDLE" : {}
+        }
+
+        var sm = new Awe.StateMachine("Connection", states, "CONNECTED");
+        sm.tracing = true;
+
+        function initHandler(ws, key) {
+            if (handlers.hasOwnProperty(key)) {
+                ws.on(key, function(data) {
+                    if (key == "authenticate" || key == "signup" || context.authenticated) {
+                        console.log("Handling message: ", data);
+                        handlers[key](ws, data, context);
+                    } else {
+                        sendFailure(ws, "noauth", "Received " + key + " message without authenticated session");
+                    }
+                });
+            }
+        }
+
+        for (key in handlers) {
+            initHandler(ws, key);
+        }
+
+        ws.on('disconnect', function() {
+            console.log('Socket disconnected');
+            if (context.user && caus[context.user]) {
+                delete caus[context.user];
+            }
+            ws = null;
+        });
+        ws.on('error', function() {
+            console.log('Socket error', arguments);
+        });
+    });
+
+    // Start the server
+    server.listen(config.serverPort);
+}
+
+var cradleConnection;
+var dbUser;
+var dbGames;
+
+function initCouchView(db, views, callback) {
+    for (var design in views) {
+        var id = '_design/'+design;
+        var viewDef = views[design];
+        for (var v in viewDef.views) {
+            var f = viewDef.views[v].map;
+            f = f.toString().replace(/\s+/g, " ");
+            viewDef.views[v].map = f;
+        }
+
+        var viewRevision;
+
+        function viewNeedsSaving(needsSaving) {
+            if (needsSaving) {
+                console.log("*************************************************************************");
+                console.log("* Database views have changed, updating "+id);
+                console.log("*************************************************************************");
+                db.save(id, viewRevision, viewDef, function(err) {
+                    if (err) {
+                        console.log("Couldn't save view "+id,err.error + ": " + err.reason);
+                    } else {
+                        callback && callback();
+                    }
+                });
+            } else {
+                callback && callback();
+            }
+        }
+
+        db.get(id, function(err, view) {
+            if (err) {
+                // Design document doesn't exist?
+                viewNeedsSaving(true);
+            } else {
+                viewRevision = view._rev;
+                var needsSaving = false;
+
+                for (var v in view.views) {
+                    if (!viewDef.views[v]) {
+                        // A view needs to be deleted from the database
+                        needsSaving = true;
+                    }
+                }
+                for (var v in viewDef.views) {
+                    // Compare old and new
+                    var vo = view.views[v];
+                    var vn = viewDef.views[v];
+                    if (!vo) {
+                        // View existence differs
+                        needsSaving = true;
+                    } else if (!vo.map != !vn.map) {
+                        // Map existence differs
+                        needsSaving = true;
+                    } else if (!vo.reduce != !vn.reduce) {
+                        // Reduce existence differs
+                        needsSaving = true;
+                    } else if (vo.map != vn.map) {
+                        // Reduce function differs
+                        needsSaving = true;
+                    } else if (vo.reduce != vn.reduce) {
+                        // Reduce function differs
+                        needsSaving = true;
+                    }
+                }
+
+                // Update if necessary
+                viewNeedsSaving(needsSaving );
+            }
+        });
     }
+}
 
-    var sm = new Awe.StateMachine("Connection", states, "CONNECTED");
-    sm.tracing = true;
+function initCouchViews() {
+    initCouchView(dbUser, userViews, function() {
+        initCouchView(dbGames, gameViews, function() {
+            startServer();
+        });
+    });
+}
 
-    function initHandler(ws, key) {
-        if (handlers.hasOwnProperty(key)) {
-            ws.on(key, function(data) {
-                if (key == "authenticate" || key == "signup" || context.authenticated) {
-                    console.log("Handling message: ", data);
-                    handlers[key](ws, data, context);
+function initCouchDBs() {
+    dbUser = cradleConnection.database('users');
+    dbGames = cradleConnection.database('games');
+    var existingDBCount = 0;
+    function dbExists() {
+        if (++existingDBCount == 2) {
+            initCouchViews();
+        }
+    }
+    dbUser.exists(function(err, exists) {
+        if (err) {
+            console.log("Database exists error",err.error + ": " + err.reason);
+        } else if (exists) {
+            dbExists();
+        } else {
+            dbUser.create(function(err) {
+                if (err) {
+                    console.log("Couldn't create database",err.error + ": " + err.reason);
                 } else {
-                    sendFailure(ws, "noauth", "Received " + key + " message without authenticated session");
+                    dbExists();
                 }
             });
         }
-    }
-
-    for (key in handlers) {
-        initHandler(ws, key);
-    }
-
-    ws.on('disconnect', function() {
-        console.log('Socket disconnected');
-        if (context.user && caus[context.user]) {
-            delete caus[context.user];
+    });
+    dbGames.exists(function(err, exists) {
+        if (err) {
+            console.log("Database exists error",err.error + ": " + err.reason);
+        } else if (exists) {
+            dbExists();
+        } else {
+            dbGames.create(function(err) {
+                if (err) {
+                    console.log("Couldn't create database",err.error + ": " + err.reason);
+                } else {
+                    dbExists();
+                }
+            })
         }
-        ws = null;
     });
-    ws.on('error', function() {
-        console.log('Socket error', arguments);
-    });
+}
+
+cradleConnection = new(cradle.Connection)(config.dbURL, config.dbPort, {
+    auth: { username: config.dbUser, password: config.dbPassword }
 });
 
+// Verifies DB setup then start server
+initCouchDBs();
