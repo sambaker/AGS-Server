@@ -7,6 +7,14 @@ var gParams = {
 
 var gContext = {};
 
+function saveParam(param, gameType, value) {
+	$.cookie(param+":"+gameType,value);
+}
+
+function getParam(param, gameType) {
+	return $.cookie(param+":"+gameType);
+}
+
 function filterGameDefs(gameDefs, server) {
 	var requestedTypes = gParams.gameTypes || [gParams.gameType];
 	gParams.gameTypes = [];
@@ -62,7 +70,11 @@ function headerDescriptionString() {
 function gameParticipantString(game) {
 	var count = game.users.length;
 	if (!gameWon(game) && !gamePlayable(game)) {
-		return "Waiting for players...";
+		var waitingFor = game.userCount - count;
+		if (waitingFor == 1) {
+			return "Waiting for 1 player...";
+		}
+		return "Waiting for "+waitingFor+" players...";
 	} else {
 		var done = 1;
 		var s = "Between you";
@@ -139,7 +151,7 @@ function GameInfo(parent, game) {
 			// TODO: Process more options, min/max player, opponent, etc
 			gContext.socket.emit("join_game", {
 				gameType: type,
-				userCount: def.maxPlayers,
+				userCount: getParam("_playerCount", type) || def.minPlayers,
 				requestUsers: []
 			});
 		});
@@ -230,14 +242,23 @@ function GameInfo(parent, game) {
 
 			if (def.maxPlayers > def.minPlayers) {
 				var options = {};
+				var selected = getParam("_playerCount", type) || def.minPlayers;
 				for (var i = def.minPlayers; i <= def.maxPlayers; ++i) {
 					options[i] = {
-						selected: i == def.minPlayers,
+						selected: i == selected,
 						text: i
 					};
 				}
-				createSelect(_i.gameTypeInfo, "select-player-count", "# of players:", options);
+				createSelect(_i.gameTypeInfo, "select-player-count", "# of players:", options, function(evt) {
+					var playerCount = evt.target.value;
+					saveParam("_playerCount", type, playerCount);
+
+					// Update for player name fields
+					updateGameTypeInfo(type);
+				});
 			}
+
+			// TODO: Create text entry for opponent name(s)
 		}
 	}
 }

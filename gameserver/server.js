@@ -272,7 +272,15 @@ var handlers = {
         } else {
             // This query doesn't filter games that I'm already in, so pull in a block of
             // results and then filter
+            var playerMin = def.minPlayers;
+            var playerMax = def.maxPlayers;
+            if (message.userCount >= playerMin && message.userCount <= playerMax) {
+                playerMin = message.userCount;
+                playerMax = message.userCount;
+            }
             var params = {
+                // startkey: [type,playerMin],
+                // endkey: [type,playerMax,{}],
                 startkey: [type],
                 endkey: [type,{}],
                 limit: 10
