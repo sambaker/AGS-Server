@@ -12,7 +12,9 @@ global.Config = {
 	// Couch database port
 	dbPort: 443,
 	dbUser: "your-user",
-	dbPassword: "your-password"
+	dbPassword: "your-password",
+
+	gameFolder: "./gameserver/games/"
 }
 
 })(typeof exports === 'undefined' ? this : exports)

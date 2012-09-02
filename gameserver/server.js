@@ -24,6 +24,7 @@ io.configure('production', function(){
 
 var cradle = require('cradle');
 var fs = require('fs');
+var path = require('path');
 
 var games = {};
 var gameDefs = {};
@@ -46,9 +47,11 @@ function validateGame(game) {
     return game != null;
 }
 
+config.gameFolderFS = path.resolve(__dirname, config.gameFolder) + '/';
+
 function loadGames() {
     var suffix = '.def.js';
-    fs.readdir('./gameserver/games/', function(err, files) {
+    fs.readdir(config.gameFolderFS, function(err, files) {
         if (err) throw err;
 
         files.forEach(function(file) {
@@ -57,15 +60,15 @@ function loadGames() {
                 var gameName = file.slice(0, i);
                 if (!games[gameName]) {
                     try {
-                        var gameDef = require('./games/'+file).Def;
-                        var game = require('./games/'+gameName+'.js').Game;
+                        var gameDef = require(config.gameFolder+file).Def;
+                        var game = require(config.gameFolder+gameName+'.js').Game;
                         if (!validateGameDef(gameDef)) {
                             throw('Game definition invalid');
                         }
                         if (!validateGame(game)) {
                             throw('Game invalid');
                         }
-                        var source = fs.readFileSync('./gameserver/games/'+gameName+'.js', 'utf8');
+                        var source = fs.readFileSync(config.gameFolderFS+gameName+'.js', 'utf8');
                         games[gameName] = {
                             game: game,
                             definition: gameDef,
