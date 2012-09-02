@@ -1,3 +1,20 @@
+Refactoring notes
+-----------------
+
+- This project has been split into 3 different github repos
+- Everything still works, but the documentation isn't yet updated (although AGS-Sample should be self-explanatory)
+
+Notes from latest checkin
+-------------------------
+
+Changed this repo to be the AGS Server only
+The AGS project with a couple of sample games is split into:
+
+AGS-Server - server component only with no game definitions
+AGS-Client - AGS client files with no html or game-specific javascript
+AGS-Sample - A complete sample app with html and JS files for checkers and chess. Includes AGS-Server and AGS-Client as submodules and shows how to create a new project for a new game type using the AGS-Server and AGS-Client modules
+
+
 Artefact Game Server
 --------------------
 
