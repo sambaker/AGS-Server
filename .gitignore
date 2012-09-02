@@ -1,4 +1,3 @@
 *.json
 node_modules/
-
-gameserver/server-config.js
+server-config.js

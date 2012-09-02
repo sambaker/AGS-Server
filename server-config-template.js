@@ -14,7 +14,7 @@ global.Config = {
 	dbUser: "your-user",
 	dbPassword: "your-password",
 
-	gameFolder: "./gameserver/games/"
+	gameFolder: "./games/"
 }
 
 })(typeof exports === 'undefined' ? this : exports)

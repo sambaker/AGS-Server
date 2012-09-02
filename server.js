@@ -75,6 +75,7 @@ function loadGames() {
                             source: source
                         }
                         gameDefs[gameName] = gameDef;
+                        console.log("Validated game " + gameDef.displayName);
                     } catch (e) {
                         console.log("ERROR: Game load failed");
                         console.log("       game type:", gameName);
